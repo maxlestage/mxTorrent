@@ -96,7 +96,7 @@ dans **Réglages → Trackers WebSocket** du client. Il respecte la variable `PO
 
 ## Déploiement sur GitHub Pages
 
-Le workflow `.github/workflows/pages.yml` construit et publie `dist/` à chaque envoi sur `main`.
+Le workflow `.github/workflows/pages.yml` construit et publie `dist/` à chaque envoi sur `master`.
 Il suffit, une fois, d'aller dans **Settings → Pages** du dépôt et de choisir **GitHub Actions** comme source.
 
 ## Ce qu'un navigateur ne peut pas faire
