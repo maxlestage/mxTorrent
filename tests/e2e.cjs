@@ -45,13 +45,15 @@ const status = (page) => page.evaluate(() => JSON.parse(window.mxtorrent.status(
 
   // B l'ajoute par son lien magnet.
   await b.evaluate((m) => window.mxtorrent.add_link(m), t.magnet);
-  let sb, last = "";
+  let sb, last = "", tDl = 0;
   const deadline = Date.now() + 90000;
   while (Date.now() < deadline) {
     sb = await status(b);
     const x = sb.torrents[0];
-    const line = x ? `${x.state} ${(x.progress * 100).toFixed(1)} % pairs=${x.peers} trackers=${sb.trackers}` : "…";
-    if (line !== last) { console.log("B :", line); last = line; }
+    const line = x ? `${x.state} pairs=${x.peers} trackers=${sb.trackers}` : "…";
+    if (line !== last) console.log(`B (${((Date.now() - t0) / 1000).toFixed(1)} s) : ${line}, ${x ? (x.progress * 100).toFixed(1) : 0} %`);
+    if (x && x.state === "Downloading" && !tDl) tDl = Date.now();
+    last = line;
     if (x && x.state === "Seeding") break;
     await b.waitForTimeout(250);
   }
@@ -64,7 +66,8 @@ const status = (page) => page.evaluate(() => JSON.parse(window.mxtorrent.status(
   }, x.info_hash);
   const ok = got === digest;
   const secs = (Date.now() - t0) / 1000;
-  console.log(ok ? `OK : ${SIZE} octets identiques (SHA-256 ${got.slice(0, 16)}…) en ${secs.toFixed(1)} s` : `ÉCHEC : empreintes différentes`);
+  const dl = (Date.now() - tDl) / 1000;
+  console.log(ok ? `OK : ${SIZE} octets identiques (SHA-256 ${got.slice(0, 16)}…) en ${secs.toFixed(1)} s, transfert ${(SIZE / 1048576 / dl).toFixed(1)} Mio/s` : `ÉCHEC : empreintes différentes`);
   const sa2 = await status(a);
   console.log(`A a envoyé ${sa2.torrents[0].uploaded} octets`);
   await browser.close();

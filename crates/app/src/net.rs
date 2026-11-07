@@ -327,8 +327,12 @@ fn hex_label() -> String {
 /// Attend la fin du rassemblement des candidats ICE (pas d'ICE « au fil de l'eau »,
 /// comme WebTorrent), avec une limite de temps : on part avec ce qu'on a.
 async fn gathered_sdp(pc: &RtcPeerConnection) -> Option<String> {
-    for _ in 0..40 {
+    for i in 0..40 {
         if pc.ice_gathering_state() == RtcIceGatheringState::Complete {
+            break;
+        }
+        // Dès qu'on connaît notre adresse publique (candidat STUN), c'est suffisant.
+        if i >= 8 && pc.local_description().is_some_and(|d| d.sdp().contains("typ srflx")) {
             break;
         }
         crate::web::sleep(100).await;
