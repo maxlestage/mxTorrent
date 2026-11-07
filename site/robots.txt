@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://maxlestage.github.io/mxTorrent/sitemap.xml

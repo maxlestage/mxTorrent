@@ -1,0 +1,49 @@
+{
+  "id": "./app/",
+  "name": "mxTorrent",
+  "short_name": "mxTorrent",
+  "description": "Client BitTorrent en Rust, WebAssembly et egui. Rien à installer, échanges directs en WebRTC.",
+  "lang": "fr",
+  "dir": "ltr",
+  "start_url": "./app/?source=pwa",
+  "scope": "./",
+  "display": "standalone",
+  "display_override": ["window-controls-overlay", "standalone"],
+  "orientation": "any",
+  "background_color": "#07070d",
+  "theme_color": "#07070d",
+  "categories": ["utilities", "productivity"],
+  "icons": [
+    { "src": "assets/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "assets/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "assets/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "assets/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "screenshots": [
+    { "src": "assets/screens/desktop.png", "sizes": "1280x800", "type": "image/png", "form_factor": "wide", "label": "mxTorrent sur ordinateur" },
+    { "src": "assets/screens/phone.png", "sizes": "412x860", "type": "image/png", "form_factor": "narrow", "label": "mxTorrent sur téléphone" }
+  ],
+  "shortcuts": [
+    { "name": "Ouvrir le client", "short_name": "Client", "url": "./app/", "icons": [{ "src": "assets/icon-192.png", "sizes": "192x192" }] },
+    { "name": "Le site de mxTorrent", "short_name": "Site", "url": "./", "icons": [{ "src": "assets/icon-192.png", "sizes": "192x192" }] }
+  ],
+  "protocol_handlers": [
+    { "protocol": "magnet", "url": "./app/?magnet=%s" }
+  ],
+  "file_handlers": [
+    { "action": "./app/", "accept": { "application/x-bittorrent": [".torrent"] }, "launch_type": "single-client" }
+  ],
+  "share_target": {
+    "action": "./app/share",
+    "method": "POST",
+    "enctype": "multipart/form-data",
+    "params": {
+      "title": "title",
+      "text": "text",
+      "url": "url",
+      "files": [{ "name": "files", "accept": ["*/*"] }]
+    }
+  },
+  "launch_handler": { "client_mode": ["focus-existing", "auto"] },
+  "prefer_related_applications": false
+}

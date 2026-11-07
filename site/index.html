@@ -1,0 +1,497 @@
+<!doctype html>
+<html lang="fr" class="no-js">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>mxTorrent — le torrent directement dans le navigateur</title>
+  <meta name="description" content="mxTorrent est un client BitTorrent écrit en Rust, compilé en WebAssembly et dessiné avec egui. Rien à installer : il tourne dans le navigateur, sur ordinateur comme sur téléphone, et s'installe comme une application.">
+  <meta name="theme-color" content="#07070d">
+  <meta name="color-scheme" content="dark">
+  <link rel="canonical" href="https://maxlestage.github.io/mxTorrent/">
+  <link rel="alternate" hreflang="fr" href="https://maxlestage.github.io/mxTorrent/">
+  <link rel="alternate" hreflang="en" href="https://maxlestage.github.io/mxTorrent/?lang=en">
+
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="mxTorrent">
+  <meta property="og:title" content="mxTorrent — le torrent directement dans le navigateur">
+  <meta property="og:description" content="Client BitTorrent en Rust + WebAssembly + egui. Rien à installer, échanges directs en WebRTC, compatible WebTorrent.">
+  <meta property="og:image" content="https://maxlestage.github.io/mxTorrent/assets/og.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:locale" content="fr_FR">
+  <meta property="og:locale:alternate" content="en_US">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="mxTorrent — le torrent directement dans le navigateur">
+  <meta name="twitter:description" content="Rust + WebAssembly + egui + WebRTC. Rien à installer.">
+  <meta name="twitter:image" content="https://maxlestage.github.io/mxTorrent/assets/og.png">
+
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="assets/icon.svg" type="image/svg+xml">
+  <link rel="icon" href="assets/favicon-32.png" sizes="32x32" type="image/png">
+  <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="mxTorrent">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap">
+  <link rel="stylesheet" href="css/site.css">
+  <link rel="modulepreload" href="vendor/three.module.min.js">
+
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    "name": "mxTorrent",
+    "applicationCategory": "UtilitiesApplication",
+    "operatingSystem": "Web, Windows, macOS, Linux, Android, iOS",
+    "description": "Client BitTorrent écrit en Rust, compilé en WebAssembly, dessiné avec egui, échanges en WebRTC.",
+    "url": "https://maxlestage.github.io/mxTorrent/",
+    "offers": { "@type": "Offer", "price": "0", "priceCurrency": "EUR" },
+    "author": { "@type": "Person", "name": "Maxime Lestage", "url": "https://github.com/maxlestage" },
+    "license": "https://opensource.org/licenses/MIT"
+  }
+  </script>
+  <script>document.documentElement.classList.replace("no-js", "js");</script>
+</head>
+<body>
+  <a class="skip" href="#contenu" data-i18n="skip">Aller au contenu</a>
+
+  <!-- Barre de progression de lecture -->
+  <div class="read-progress" aria-hidden="true"><span></span></div>
+  <!-- Curseur lumineux (ordinateur seulement) -->
+  <div class="cursor-glow" aria-hidden="true"></div>
+
+  <header class="nav" id="nav">
+    <a class="brand" href="#top" aria-label="mxTorrent, accueil">
+      <svg class="brand-logo" viewBox="0 0 64 64" aria-hidden="true"><use href="#logo"/></svg>
+      <span><b>mx</b>Torrent</span>
+    </a>
+    <nav class="nav-links" aria-label="Navigation principale">
+      <a href="#fonctionnalites" data-i18n="nav.features">Fonctionnalités</a>
+      <a href="#fonctionnement" data-i18n="nav.how">Fonctionnement</a>
+      <a href="#apercu" data-i18n="nav.preview">Aperçu</a>
+      <a href="#securite" data-i18n="nav.security">Sécurité</a>
+      <a href="#installer" data-i18n="nav.install">Installer</a>
+      <a href="#faq">FAQ</a>
+    </nav>
+    <div class="nav-actions">
+      <button class="lang-toggle" type="button" aria-label="Changer de langue / Change language"><span data-lang-label>EN</span></button>
+      <a class="btn btn-primary btn-sm magnetic" href="app/"><span data-i18n="cta.open">Ouvrir l'app</span></a>
+      <button class="burger" type="button" aria-expanded="false" aria-controls="menu" aria-label="Menu"><i></i><i></i><i></i></button>
+    </div>
+  </header>
+
+  <div class="menu" id="menu" hidden>
+    <nav aria-label="Menu mobile">
+      <a href="#fonctionnalites" data-i18n="nav.features">Fonctionnalités</a>
+      <a href="#fonctionnement" data-i18n="nav.how">Fonctionnement</a>
+      <a href="#apercu" data-i18n="nav.preview">Aperçu</a>
+      <a href="#securite" data-i18n="nav.security">Sécurité</a>
+      <a href="#installer" data-i18n="nav.install">Installer</a>
+      <a href="#faq">FAQ</a>
+      <a class="btn btn-primary" href="app/" data-i18n="cta.open">Ouvrir l'app</a>
+    </nav>
+  </div>
+
+  <main id="contenu">
+    <!-- ============================================================ HÉROS -->
+    <section class="hero" id="top">
+      <canvas class="hero-canvas" id="hero-canvas" aria-hidden="true"></canvas>
+      <div class="hero-fallback" aria-hidden="true"></div>
+      <div class="hero-inner">
+        <p class="eyebrow reveal"><span class="dot"></span> <span data-i18n="hero.eyebrow">Rust · WebAssembly · egui · WebRTC</span></p>
+        <h1 class="hero-title">
+          <span class="split" data-i18n="hero.title1">Le torrent,</span>
+          <span class="split gradient-text" data-i18n="hero.title2">sans rien installer.</span>
+        </h1>
+        <p class="hero-sub reveal" data-i18n="hero.sub">Un client BitTorrent complet qui tourne dans votre navigateur, sur ordinateur comme sur téléphone. Les pairs se parlent directement, chiffré, en WebRTC.</p>
+        <form class="magnet-form reveal" action="app/" method="get" autocomplete="off">
+          <label class="sr-only" for="magnet" data-i18n="hero.label">Lien magnet</label>
+          <span class="magnet-icon" aria-hidden="true">🧲</span>
+          <input id="magnet" name="magnet" type="text" inputmode="url" placeholder="magnet:?xt=urn:btih:…" data-i18n-placeholder="hero.placeholder" spellcheck="false">
+          <button class="btn btn-primary" type="submit"><span data-i18n="hero.go">Télécharger</span> <span aria-hidden="true">→</span></button>
+        </form>
+        <div class="hero-ctas reveal">
+          <a class="btn btn-ghost magnetic" href="app/"><span data-i18n="hero.share">Partager des fichiers</span></a>
+          <a class="btn btn-link" href="#fonctionnement"><span data-i18n="hero.how">Comment ça marche ?</span></a>
+        </div>
+        <ul class="hero-badges reveal" aria-label="Points clés">
+          <li data-i18n="hero.b1">0 octet à installer</li>
+          <li data-i18n="hero.b2">Compatible WebTorrent</li>
+          <li data-i18n="hero.b3">Open source (MIT)</li>
+        </ul>
+      </div>
+      <a class="scroll-hint" href="#tech" aria-label="Défiler"><span></span></a>
+    </section>
+
+    <!-- ============================================================ BANDEAU -->
+    <section class="marquee" id="tech" aria-label="Technologies">
+      <div class="marquee-track">
+        <span>🦀 Rust</span><span>⚙️ WebAssembly</span><span>🎨 egui</span><span>🔗 WebRTC</span><span>🧲 BitTorrent</span><span>🌐 WebTorrent</span><span>📲 PWA</span><span>🔐 SHA-1</span><span>🛰️ STUN</span><span>⚡ eframe</span>
+        <span aria-hidden="true">🦀 Rust</span><span aria-hidden="true">⚙️ WebAssembly</span><span aria-hidden="true">🎨 egui</span><span aria-hidden="true">🔗 WebRTC</span><span aria-hidden="true">🧲 BitTorrent</span><span aria-hidden="true">🌐 WebTorrent</span><span aria-hidden="true">📲 PWA</span><span aria-hidden="true">🔐 SHA-1</span><span aria-hidden="true">🛰️ STUN</span><span aria-hidden="true">⚡ eframe</span>
+      </div>
+    </section>
+
+    <!-- ============================================================ CHIFFRES -->
+    <section class="stats" id="chiffres" aria-label="En chiffres">
+      <div class="stat reveal"><b data-count="0">0</b><span data-i18n="stats.install">octet à installer</span></div>
+      <div class="stat reveal"><b data-count="100" data-suffix=" %">0</b><span data-i18n="stats.rust">du moteur en Rust</span></div>
+      <div class="stat reveal"><b data-count="16" data-suffix=" Kio">0</b><span data-i18n="stats.block">par bloc, vérifié</span></div>
+      <div class="stat reveal"><b data-count="2">0</b><span data-i18n="stats.langs">langues : FR et EN</span></div>
+    </section>
+
+    <!-- ============================================================ FONCTIONNALITÉS -->
+    <section class="section" id="fonctionnalites">
+      <header class="section-head">
+        <p class="kicker reveal" data-i18n="feat.kicker">Fonctionnalités</p>
+        <h2 class="reveal" data-i18n="feat.title">Tout ce qu'on attend d'un client torrent. Dans un onglet.</h2>
+        <p class="lead reveal" data-i18n="feat.lead">Liens magnet, fichiers .torrent, partage instantané, choix des fichiers, aperçu des vidéos : mxTorrent fait le travail d'une application de bureau, sans en être une.</p>
+      </header>
+      <div class="cards">
+        <article class="card tilt reveal">
+          <div class="card-icon">🧲</div>
+          <h3 data-i18n="f1.t">Liens magnet et .torrent</h3>
+          <p data-i18n="f1.d">Collez un lien, une empreinte, une URL ou déposez un fichier. Les métadonnées arrivent des pairs (BEP 9), sans serveur.</p>
+        </article>
+        <article class="card tilt reveal">
+          <div class="card-icon">📤</div>
+          <h3 data-i18n="f2.t">Partage en un geste</h3>
+          <p data-i18n="f2.d">Déposez des fichiers : mxTorrent crée le torrent, le partage aussitôt et vous donne un lien et un QR code à scanner.</p>
+        </article>
+        <article class="card tilt reveal">
+          <div class="card-icon">🔗</div>
+          <h3 data-i18n="f3.t">Pair à pair, vraiment</h3>
+          <p data-i18n="f3.d">Les octets passent directement d'un navigateur à l'autre, chiffrés par WebRTC (DTLS). Le tracker ne fait que présenter les pairs.</p>
+        </article>
+        <article class="card tilt reveal">
+          <div class="card-icon">🧩</div>
+          <h3 data-i18n="f4.t">La pièce la plus rare d'abord</h3>
+          <p data-i18n="f4.d">Sélection des pièces, demandes en file, fin de partie, vérification SHA-1 de chaque pièce : le vrai protocole BitTorrent.</p>
+        </article>
+        <article class="card tilt reveal">
+          <div class="card-icon">🎬</div>
+          <h3 data-i18n="f5.t">Aperçu et enregistrement</h3>
+          <p data-i18n="f5.d">Ouvrez une vidéo, une image ou un PDF dès qu'il est complet, ou enregistrez-le. Ne téléchargez que les fichiers choisis.</p>
+        </article>
+        <article class="card tilt reveal">
+          <div class="card-icon">🌍</div>
+          <h3 data-i18n="f6.t">Compatible WebTorrent</h3>
+          <p data-i18n="f6.d">Même protocole et mêmes trackers que webtorrent.io, Instant.io ou WebTorrent Desktop : vous rejoignez des essaims existants.</p>
+        </article>
+        <article class="card tilt reveal">
+          <div class="card-icon">🌐</div>
+          <h3 data-i18n="f7.t">Sources web</h3>
+          <p data-i18n="f7.d">Les torrents avec des sources HTTP (BEP 19) se téléchargent même sans pair : mxTorrent mélange les deux.</p>
+        </article>
+        <article class="card tilt reveal">
+          <div class="card-icon">📲</div>
+          <h3 data-i18n="f8.t">Une vraie application</h3>
+          <p data-i18n="f8.d">Installez-le depuis le navigateur : icône, plein écran, liens magnet et fichiers .torrent ouverts directement par mxTorrent.</p>
+        </article>
+      </div>
+    </section>
+
+    <!-- ============================================================ FONCTIONNEMENT (3D épinglée) -->
+    <section class="how" id="fonctionnement">
+      <div class="how-sticky">
+        <canvas class="how-canvas" id="how-canvas" aria-hidden="true"></canvas>
+        <div class="how-meter" aria-hidden="true"><span id="how-meter-fill"></span><b id="how-meter-text">0 %</b></div>
+      </div>
+      <div class="how-steps">
+        <header class="section-head how-head">
+          <p class="kicker reveal" data-i18n="how.kicker">Fonctionnement</p>
+          <h2 class="reveal" data-i18n="how.title">De l'empreinte au fichier, en quatre étapes.</h2>
+        </header>
+        <article class="step" data-step="0">
+          <span class="step-n">01</span>
+          <h3 data-i18n="s1.t">Vous collez un lien magnet</h3>
+          <p data-i18n="s1.d">Le lien contient l'empreinte SHA-1 du torrent et des trackers WebSocket. mxTorrent n'a besoin de rien d'autre.</p>
+        </article>
+        <article class="step" data-step="1">
+          <span class="step-n">02</span>
+          <h3 data-i18n="s2.t">Le tracker présente les pairs</h3>
+          <p data-i18n="s2.d">Votre navigateur annonce des offres WebRTC ; le tracker les relaie aux autres membres de l'essaim, qui répondent.</p>
+        </article>
+        <article class="step" data-step="2">
+          <span class="step-n">03</span>
+          <h3 data-i18n="s3.t">Les navigateurs se connectent</h3>
+          <p data-i18n="s3.d">Un canal de données chiffré s'ouvre entre vous et chaque pair, à travers les box et les NAT grâce à STUN.</p>
+        </article>
+        <article class="step" data-step="3">
+          <span class="step-n">04</span>
+          <h3 data-i18n="s4.t">Les pièces arrivent et sont vérifiées</h3>
+          <p data-i18n="s4.d">Blocs de 16 Kio demandés à plusieurs pairs, pièces vérifiées par SHA-1, puis partagées à leur tour. Le cube se remplit.</p>
+        </article>
+      </div>
+    </section>
+
+    <!-- ============================================================ APERÇU -->
+    <section class="section preview" id="apercu">
+      <header class="section-head">
+        <p class="kicker reveal" data-i18n="prev.kicker">Aperçu</p>
+        <h2 class="reveal" data-i18n="prev.title">Une interface egui, fluide à 60 images par seconde.</h2>
+        <p class="lead reveal" data-i18n="prev.lead">La même application s'adapte à l'écran : deux colonnes sur ordinateur, une colonne et un bouton flottant sur téléphone.</p>
+      </header>
+      <div class="devices">
+        <div class="laptop parallax" data-depth="0.06">
+          <div class="laptop-screen"><img src="assets/screens/desktop.png" alt="mxTorrent sur ordinateur : la liste des torrents et les détails d'un partage" loading="lazy" width="1280" height="800"></div>
+          <div class="laptop-base"></div>
+        </div>
+        <div class="phone parallax" data-depth="0.14">
+          <div class="phone-notch"></div>
+          <img src="assets/screens/phone.png" alt="mxTorrent sur téléphone : une colonne et un bouton flottant" loading="lazy" width="412" height="860">
+        </div>
+      </div>
+      <ul class="preview-points">
+        <li class="reveal"><b data-i18n="pp1.t">Carte des pièces</b><span data-i18n="pp1.d">Chaque case est une pièce : vous voyez le torrent se construire.</span></li>
+        <li class="reveal"><b data-i18n="pp2.t">Pairs en direct</b><span data-i18n="pp2.d">Logiciel, progression, débits et état de chaque pair.</span></li>
+        <li class="reveal"><b data-i18n="pp3.t">Thème clair ou sombre</b><span data-i18n="pp3.d">Et une interface en français ou en anglais.</span></li>
+      </ul>
+    </section>
+
+    <!-- ============================================================ SÉCURITÉ -->
+    <section class="section security" id="securite">
+      <header class="section-head">
+        <p class="kicker reveal" data-i18n="sec.kicker">Sécurité et vie privée</p>
+        <h2 class="reveal" data-i18n="sec.title">Le navigateur comme bac à sable.</h2>
+      </header>
+      <div class="security-grid">
+        <div class="shield reveal" aria-hidden="true">
+          <canvas id="shield-canvas"></canvas>
+        </div>
+        <ul class="checks">
+          <li class="reveal"><b data-i18n="c1.t">Aucun compte, aucun pisteur</b><span data-i18n="c1.d">Pas de cookie, pas de mesure d'audience. Vos réglages restent dans votre navigateur.</span></li>
+          <li class="reveal"><b data-i18n="c2.t">Chiffré de bout en bout</b><span data-i18n="c2.d">WebRTC impose DTLS : personne entre deux pairs ne lit les données.</span></li>
+          <li class="reveal"><b data-i18n="c3.t">Chaque pièce vérifiée</b><span data-i18n="c3.d">Une pièce dont l'empreinte SHA-1 ne correspond pas est jetée et redemandée.</span></li>
+          <li class="reveal"><b data-i18n="c4.t">Isolé du système</b><span data-i18n="c4.d">WebAssembly ne voit ni vos fichiers ni votre réseau local : seulement ce que vous lui donnez.</span></li>
+          <li class="reveal"><b data-i18n="c5.t">Code ouvert</b><span data-i18n="c5.d">Tout le code est sur GitHub, sous licence MIT. Lisez-le, compilez-le, hébergez-le.</span></li>
+        </ul>
+      </div>
+      <div class="compare reveal">
+        <table>
+          <caption class="sr-only" data-i18n="cmp.caption">Comparaison avec un client classique</caption>
+          <thead>
+            <tr><th></th><th>mxTorrent</th><th data-i18n="cmp.classic">Client classique</th></tr>
+          </thead>
+          <tbody>
+            <tr><th data-i18n="cmp.r1">Installation</th><td class="yes" data-i18n="cmp.r1a">Aucune</td><td data-i18n="cmp.r1b">Programme à installer et mettre à jour</td></tr>
+            <tr><th data-i18n="cmp.r2">Téléphone</th><td class="yes" data-i18n="cmp.r2a">Oui, même navigateur</td><td data-i18n="cmp.r2b">Application séparée, si elle existe</td></tr>
+            <tr><th data-i18n="cmp.r3">Accès au système</th><td class="yes" data-i18n="cmp.r3a">Bac à sable du navigateur</td><td data-i18n="cmp.r3b">Accès complet au disque</td></tr>
+            <tr><th data-i18n="cmp.r4">Chiffrement</th><td class="yes" data-i18n="cmp.r4a">Toujours (DTLS)</td><td data-i18n="cmp.r4b">Optionnel</td></tr>
+            <tr><th data-i18n="cmp.r5">Pairs joignables</th><td data-i18n="cmp.r5a">Réseau WebTorrent (WebRTC)</td><td class="yes" data-i18n="cmp.r5b">Tout le réseau BitTorrent (TCP/UDP)</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ============================================================ INSTALLER -->
+    <section class="section install" id="installer">
+      <header class="section-head">
+        <p class="kicker reveal" data-i18n="inst.kicker">Installer</p>
+        <h2 class="reveal" data-i18n="inst.title">Une application, sans boutique d'applications.</h2>
+        <p class="lead reveal" data-i18n="inst.lead">mxTorrent est une Progressive Web App : elle s'installe depuis le navigateur, se lance en plein écran et fonctionne même hors ligne pour ses fichiers déjà téléchargés.</p>
+      </header>
+      <div class="install-cta reveal">
+        <button class="btn btn-primary btn-lg magnetic" id="install-btn" type="button" hidden><span data-i18n="inst.button">Installer mxTorrent</span></button>
+        <p class="install-done" id="install-done" hidden data-i18n="inst.done">mxTorrent est installé. Bon partage !</p>
+      </div>
+      <div class="install-grid">
+        <article class="install-card tilt reveal">
+          <h3>🤖 Android</h3>
+          <ol>
+            <li data-i18n="i.a1">Ouvrez ce site dans Chrome, Edge ou Samsung Internet.</li>
+            <li data-i18n="i.a2">Touchez « Installer l'application » dans le menu ⋮.</li>
+            <li data-i18n="i.a3">Partagez des fichiers vers mxTorrent depuis n'importe quelle application.</li>
+          </ol>
+        </article>
+        <article class="install-card tilt reveal">
+          <h3>🍏 iPhone et iPad</h3>
+          <ol>
+            <li data-i18n="i.i1">Ouvrez ce site dans Safari.</li>
+            <li data-i18n="i.i2">Touchez le bouton Partager, puis « Sur l'écran d'accueil ».</li>
+            <li data-i18n="i.i3">Lancez mxTorrent depuis son icône, en plein écran.</li>
+          </ol>
+        </article>
+        <article class="install-card tilt reveal">
+          <h3>💻 Ordinateur</h3>
+          <ol>
+            <li data-i18n="i.d1">Dans Chrome ou Edge, cliquez sur l'icône d'installation de la barre d'adresse.</li>
+            <li data-i18n="i.d2">Les fichiers .torrent s'ouvrent ensuite avec mxTorrent.</li>
+            <li data-i18n="i.d3">Dans les réglages, faites-en le gestionnaire des liens magnet.</li>
+          </ol>
+        </article>
+      </div>
+    </section>
+
+    <!-- ============================================================ FAQ -->
+    <section class="section faq" id="faq">
+      <header class="section-head">
+        <p class="kicker reveal">FAQ</p>
+        <h2 class="reveal" data-i18n="faq.title">Questions fréquentes</h2>
+      </header>
+      <div class="faq-list">
+        <details class="reveal"><summary data-i18n="q1">Puis-je télécharger n'importe quel torrent ?</summary><p data-i18n="a1">Ceux dont l'essaim compte des pairs WebRTC (WebTorrent, Instant.io, mxTorrent…) ou des sources web. Un navigateur ne peut pas ouvrir de connexions TCP ou UDP brutes : les pairs qui n'utilisent que ces protocoles lui restent invisibles.</p></details>
+        <details class="reveal"><summary data-i18n="q2">Où sont stockés les fichiers ?</summary><p data-i18n="a2">Dans la mémoire de l'onglet, tant qu'il est ouvert. Quand un fichier est complet, vous l'enregistrez ou l'ouvrez en un clic. Gardez l'onglet ouvert pour continuer à partager.</p></details>
+        <details class="reveal"><summary data-i18n="q3">Quelle taille de fichier est raisonnable ?</summary><p data-i18n="a3">Quelques centaines de mégaoctets passent très bien partout ; jusqu'à environ 2 Gio sur ordinateur. Sur téléphone, la mémoire disponible dépend de l'appareil.</p></details>
+        <details class="reveal"><summary data-i18n="q4">Est-ce légal ?</summary><p data-i18n="a4">BitTorrent est une technologie légale, utilisée pour distribuer des logiciels libres, des films libres de droits, des jeux de données… Partagez uniquement des contenus dont vous avez les droits.</p></details>
+        <details class="reveal"><summary data-i18n="q5">Pourquoi Rust et egui ?</summary><p data-i18n="a5">Rust donne un moteur rapide et sûr, compilé en WebAssembly. egui dessine toute l'interface dans un canevas : le même code donne la même application sur ordinateur et sur téléphone.</p></details>
+        <details class="reveal"><summary data-i18n="q6">Puis-je héberger mon propre tracker ?</summary><p data-i18n="a6">Oui : le dépôt contient mxtorrent-tracker, un tracker WebSocket compatible WebTorrent. Lancez-le, puis ajoutez son adresse wss:// dans les réglages de l'application.</p></details>
+        <details class="reveal"><summary data-i18n="q7">Mon adresse IP est-elle visible ?</summary><p data-i18n="a7">Comme dans tout réseau pair à pair, les pairs avec qui vous échangez voient votre adresse. Les trackers aussi. Utilisez un VPN si c'est un souci.</p></details>
+        <details class="reveal"><summary data-i18n="q8">Ça fonctionne hors ligne ?</summary><p data-i18n="a8">L'application et ce site se lancent hors ligne une fois visités. Pour échanger, il faut évidemment du réseau.</p></details>
+      </div>
+    </section>
+
+    <!-- ============================================================ APPEL FINAL -->
+    <section class="cta" id="cta">
+      <canvas class="cta-canvas" id="cta-canvas" aria-hidden="true"></canvas>
+      <div class="cta-inner">
+        <h2 class="reveal" data-i18n="cta.title">Prêt à partager ?</h2>
+        <p class="reveal" data-i18n="cta.lead">Ouvrez l'application, déposez un fichier, envoyez le lien. C'est tout.</p>
+        <div class="hero-ctas reveal">
+          <a class="btn btn-primary btn-lg magnetic" href="app/"><span data-i18n="cta.open">Ouvrir l'app</span></a>
+          <a class="btn btn-ghost btn-lg magnetic" href="https://github.com/maxlestage/mxTorrent" rel="noopener"><span data-i18n="cta.code">Voir le code</span></a>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- ============================================================ PIED DE PAGE -->
+  <footer class="footer" id="pied">
+    <div class="footer-top">
+      <div class="footer-brand">
+        <canvas class="footer-logo" id="footer-canvas" width="120" height="120" aria-hidden="true"></canvas>
+        <p class="footer-name"><b>mx</b>Torrent</p>
+        <p class="footer-tagline" data-i18n="ft.tagline">Le torrent directement dans le navigateur. Écrit en Rust, compilé en WebAssembly, dessiné avec egui.</p>
+        <div class="footer-status">
+          <span class="chip"><i class="pulse"></i> <span data-i18n="ft.online" id="net-status">En ligne</span></span>
+          <span class="chip">PWA</span>
+          <span class="chip">MIT</span>
+          <span class="chip">v0.1.0</span>
+        </div>
+        <form class="footer-magnet" action="app/" method="get" autocomplete="off">
+          <label class="sr-only" for="magnet2" data-i18n="hero.label">Lien magnet</label>
+          <input id="magnet2" name="magnet" type="text" placeholder="magnet:?xt=urn:btih:…" spellcheck="false">
+          <button class="btn btn-primary btn-sm" type="submit" aria-label="Ouvrir">→</button>
+        </form>
+      </div>
+
+      <nav class="footer-cols" aria-label="Plan du site">
+        <div class="footer-col">
+          <h3 data-i18n="ft.product">Produit</h3>
+          <ul>
+            <li><a href="app/" data-i18n="ft.open">Ouvrir le client</a></li>
+            <li><a href="#fonctionnalites" data-i18n="nav.features">Fonctionnalités</a></li>
+            <li><a href="#fonctionnement" data-i18n="nav.how">Fonctionnement</a></li>
+            <li><a href="#apercu" data-i18n="nav.preview">Aperçu</a></li>
+            <li><a href="#installer" data-i18n="ft.installpwa">Installer la PWA</a></li>
+            <li><a href="https://github.com/maxlestage/mxTorrent/releases" rel="noopener" data-i18n="ft.releases">Versions</a></li>
+          </ul>
+        </div>
+        <div class="footer-col">
+          <h3 data-i18n="ft.resources">Ressources</h3>
+          <ul>
+            <li><a href="https://github.com/maxlestage/mxTorrent#readme" rel="noopener" data-i18n="ft.docs">Documentation</a></li>
+            <li><a href="https://github.com/maxlestage/mxTorrent/tree/main/crates/tracker" rel="noopener" data-i18n="ft.tracker">Tracker auto-hébergé</a></li>
+            <li><a href="https://github.com/maxlestage/mxTorrent/tree/main/crates/core" rel="noopener" data-i18n="ft.core">Moteur mxtorrent-core</a></li>
+            <li><a href="#faq">FAQ</a></li>
+            <li><a href="https://github.com/maxlestage/mxTorrent/issues/new" rel="noopener" data-i18n="ft.bug">Signaler un problème</a></li>
+            <li><a href="https://github.com/maxlestage/mxTorrent/pulls" rel="noopener" data-i18n="ft.contribute">Contribuer</a></li>
+          </ul>
+        </div>
+        <div class="footer-col">
+          <h3 data-i18n="ft.tech">Technologies</h3>
+          <ul>
+            <li><a href="https://www.rust-lang.org/" rel="noopener">Rust</a></li>
+            <li><a href="https://github.com/emilk/egui" rel="noopener">egui · eframe</a></li>
+            <li><a href="https://webassembly.org/" rel="noopener">WebAssembly</a></li>
+            <li><a href="https://developer.mozilla.org/docs/Web/API/WebRTC_API" rel="noopener">WebRTC</a></li>
+            <li><a href="https://webtorrent.io/" rel="noopener">WebTorrent</a></li>
+            <li><a href="https://www.bittorrent.org/beps/bep_0000.html" rel="noopener" data-i18n="ft.beps">Spécifications BEP</a></li>
+          </ul>
+        </div>
+        <div class="footer-col">
+          <h3 data-i18n="ft.legal">Légal</h3>
+          <ul>
+            <li><a href="legal.html#mentions" data-i18n="ft.notice">Mentions légales</a></li>
+            <li><a href="legal.html#confidentialite" data-i18n="ft.privacy">Confidentialité</a></li>
+            <li><a href="legal.html#usage" data-i18n="ft.responsible">Utilisation responsable</a></li>
+            <li><a href="legal.html#licence" data-i18n="ft.license">Licence MIT</a></li>
+            <li><a href="legal.html#tiers" data-i18n="ft.thirdparty">Composants tiers</a></li>
+            <li><a href="legal.html#accessibilite" data-i18n="ft.a11y">Accessibilité</a></li>
+          </ul>
+        </div>
+      </nav>
+    </div>
+
+    <div class="footer-middle">
+      <div class="compat">
+        <h3 data-i18n="ft.compat">Compatible avec</h3>
+        <ul>
+          <li>Chrome</li><li>Edge</li><li>Firefox</li><li>Safari</li><li>Samsung Internet</li><li>Opera</li><li>Brave</li>
+        </ul>
+      </div>
+      <div class="footer-social">
+        <h3 data-i18n="ft.follow">Suivre le projet</h3>
+        <div class="social">
+          <a href="https://github.com/maxlestage/mxTorrent" rel="noopener" aria-label="GitHub" class="magnetic">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 .5A11.5 11.5 0 0 0 .5 12a11.5 11.5 0 0 0 7.86 10.92c.58.1.79-.25.79-.56v-2c-3.2.7-3.88-1.38-3.88-1.38-.52-1.33-1.28-1.69-1.28-1.69-1.05-.71.08-.7.08-.7 1.16.08 1.77 1.19 1.77 1.19 1.03 1.77 2.7 1.26 3.36.96.1-.75.4-1.26.73-1.55-2.55-.29-5.24-1.28-5.24-5.68 0-1.26.45-2.28 1.19-3.09-.12-.29-.52-1.46.11-3.05 0 0 .97-.31 3.17 1.18a11 11 0 0 1 5.77 0c2.2-1.49 3.17-1.18 3.17-1.18.63 1.59.23 2.76.11 3.05.74.81 1.19 1.83 1.19 3.09 0 4.41-2.7 5.38-5.26 5.67.41.36.78 1.06.78 2.14v3.17c0 .31.21.67.8.56A11.5 11.5 0 0 0 23.5 12 11.5 11.5 0 0 0 12 .5Z"/></svg>
+          </a>
+          <a href="https://www.linkedin.com/in/max-lestage/" rel="noopener" aria-label="LinkedIn" class="magnetic">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M20.45 20.45h-3.55v-5.57c0-1.33-.03-3.04-1.85-3.04-1.86 0-2.14 1.45-2.14 2.94v5.67H9.35V9h3.41v1.56h.05c.47-.9 1.64-1.85 3.37-1.85 3.6 0 4.27 2.37 4.27 5.46v6.28ZM5.34 7.43a2.06 2.06 0 1 1 0-4.12 2.06 2.06 0 0 1 0 4.12ZM7.12 20.45H3.56V9h3.56v11.45ZM22.22 0H1.77C.79 0 0 .77 0 1.73v20.54C0 23.23.79 24 1.77 24h20.45c.98 0 1.78-.77 1.78-1.73V1.73C24 .77 23.2 0 22.22 0Z"/></svg>
+          </a>
+          <a href="https://github.com/maxlestage/mxTorrent/stargazers" rel="noopener" aria-label="Étoiles GitHub" class="magnetic">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="m12 2 3.1 6.3 6.9 1-5 4.9 1.2 6.8L12 17.8 5.8 21l1.2-6.8-5-4.9 6.9-1z"/></svg>
+          </a>
+          <a href="https://github.com/maxlestage/mxTorrent/commits.atom" rel="noopener" aria-label="Flux Atom des nouveautés" class="magnetic">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M6.18 15.64a2.18 2.18 0 1 1 0 4.36 2.18 2.18 0 0 1 0-4.36ZM4 4.44A15.56 15.56 0 0 1 19.56 20h-2.83A12.73 12.73 0 0 0 4 7.27V4.44Zm0 5.66A9.9 9.9 0 0 1 13.9 20h-2.83A7.07 7.07 0 0 0 4 12.93V10.1Z"/></svg>
+          </a>
+        </div>
+      </div>
+      <div class="footer-shortcuts">
+        <h3 data-i18n="ft.shortcuts">Raccourcis dans l'app</h3>
+        <ul>
+          <li><kbd>Ctrl</kbd> + <kbd>V</kbd> <span data-i18n="ft.k1">coller un lien magnet</span></li>
+          <li><kbd>⇩</kbd> <span data-i18n="ft.k2">déposer des fichiers pour les partager</span></li>
+          <li><kbd>🧲</kbd> <span data-i18n="ft.k3">ouvrir les liens magnet du système</span></li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="footer-wordmark" aria-hidden="true">mxTorrent</div>
+
+    <div class="footer-bottom">
+      <p>© <span id="year">2026</span> Maxime Lestage · <span data-i18n="ft.made">Fait à Bordeaux avec Rust</span> 🦀</p>
+      <p class="footer-bottom-links">
+        <a href="legal.html#confidentialite" data-i18n="ft.nocookie">Aucun cookie</a>
+        <a href="https://github.com/maxlestage/mxTorrent" rel="noopener" data-i18n="ft.source">Code source</a>
+        <button class="lang-toggle link" type="button"><span data-i18n="ft.lang">English version</span></button>
+      </p>
+      <button class="to-top magnetic" type="button" aria-label="Revenir en haut">↑</button>
+    </div>
+  </footer>
+
+  <!-- Le logo, réutilisé partout -->
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <defs>
+      <linearGradient id="lg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#8b5cf6"/><stop offset="1" stop-color="#22d3ee"/></linearGradient>
+      <symbol id="logo" viewBox="0 0 512 512">
+        <g fill="none" stroke-linecap="round">
+          <ellipse cx="256" cy="256" rx="200" ry="64" stroke="#8b5cf6" stroke-width="26" transform="rotate(-24 256 256)"/>
+          <ellipse cx="256" cy="256" rx="160" ry="48" stroke="#22d3ee" stroke-width="22" transform="rotate(42 256 256)"/>
+          <ellipse cx="256" cy="256" rx="118" ry="34" stroke="#ec4899" stroke-width="18" transform="rotate(100 256 256)"/>
+        </g>
+        <circle cx="75" cy="312" r="26" fill="#8b5cf6"/>
+        <circle cx="326" cy="361" r="22" fill="#22d3ee"/>
+        <circle cx="270" cy="141" r="19" fill="#ec4899"/>
+        <circle cx="256" cy="256" r="56" fill="url(#lg)"/>
+      </symbol>
+    </defs>
+  </svg>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>

@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Informations légales — mxTorrent</title>
+  <meta name="description" content="Mentions légales, confidentialité, utilisation responsable, licence et composants tiers de mxTorrent.">
+  <meta name="theme-color" content="#07070d">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="assets/icon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap">
+  <link rel="stylesheet" href="css/site.css">
+  <style>
+    .legal { max-width: 820px; margin: 0 auto; padding: calc(100px + env(safe-area-inset-top)) var(--gutter) 80px; }
+    .legal h1 { font-size: clamp(34px, 9vw, 56px); margin-bottom: 12px; }
+    .legal > p.lead { margin-bottom: 30px; }
+    .legal nav.toc { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 40px; }
+    .legal nav.toc a { padding: 6px 14px; border-radius: 999px; border: 1px solid var(--border); color: var(--muted); font-size: 14px; }
+    .legal nav.toc a:hover { color: var(--text); border-color: var(--violet); }
+    .legal section { padding: 26px; margin-bottom: 16px; border-radius: var(--radius); background: var(--surface); border: 1px solid var(--border); scroll-margin-top: 90px; }
+    .legal h2 { font-size: 26px; margin-bottom: 12px; }
+    .legal h3 { font-size: 18px; margin: 18px 0 6px; }
+    .legal p, .legal li { color: var(--muted); }
+    .legal p + p { margin-top: 10px; }
+    .legal a:not(.btn) { color: var(--cyan); }
+    .legal ul { padding-left: 20px; display: grid; gap: 6px; }
+    .legal section:target { border-color: var(--violet); box-shadow: 0 0 0 6px color-mix(in srgb, var(--violet) 15%, transparent); }
+    .legal pre { white-space: pre-wrap; font-size: 13px; color: var(--muted); background: var(--bg2); padding: 16px; border-radius: 12px; border: 1px solid var(--border); }
+  </style>
+</head>
+<body>
+  <header class="nav scrolled">
+    <a class="brand" href="./" aria-label="mxTorrent, accueil">
+      <img class="brand-logo" src="assets/icon.svg" alt="" width="34" height="34">
+      <span><b>mx</b>Torrent</span>
+    </a>
+    <div class="nav-actions">
+      <a class="btn btn-ghost btn-sm" href="./" style="display:inline-flex">← Accueil</a>
+      <a class="btn btn-primary btn-sm" href="app/">Ouvrir l'app</a>
+    </div>
+  </header>
+
+  <main class="legal">
+    <h1>Informations légales</h1>
+    <p class="lead">Tout ce qu'il faut savoir sur l'éditeur du site, vos données, et la bonne utilisation de mxTorrent.</p>
+    <nav class="toc" aria-label="Sommaire">
+      <a href="#mentions">Mentions légales</a>
+      <a href="#confidentialite">Confidentialité</a>
+      <a href="#usage">Utilisation responsable</a>
+      <a href="#licence">Licence</a>
+      <a href="#tiers">Composants tiers</a>
+      <a href="#accessibilite">Accessibilité</a>
+    </nav>
+
+    <section id="mentions">
+      <h2>Mentions légales</h2>
+      <h3>Éditeur</h3>
+      <p>Ce site et l'application mxTorrent sont édités par Maxime Lestage, à titre personnel et non commercial. Contact : par l'intermédiaire des <a href="https://github.com/maxlestage/mxTorrent/issues" rel="noopener">tickets GitHub du projet</a> ou du <a href="https://github.com/maxlestage" rel="noopener">profil GitHub</a> de l'auteur.</p>
+      <h3>Hébergement</h3>
+      <p>GitHub Pages, service de GitHub, Inc., 88 Colin P. Kelly Jr. Street, San Francisco, CA 94107, États-Unis — <a href="https://github.com" rel="noopener">github.com</a>.</p>
+      <h3>Contenus échangés</h3>
+      <p>mxTorrent est un logiciel : il n'héberge, n'indexe et ne référence aucun contenu. Les fichiers circulent directement entre les navigateurs des utilisateurs, qui sont seuls responsables de ce qu'ils partagent.</p>
+    </section>
+
+    <section id="confidentialite">
+      <h2>Confidentialité</h2>
+      <p><strong>Ce site ne dépose aucun cookie et ne fait aucune mesure d'audience.</strong> Il n'y a ni compte, ni serveur applicatif, ni base de données.</p>
+      <h3>Ce qui reste dans votre navigateur</h3>
+      <ul>
+        <li>Vos réglages (langue, thème, trackers) et la liste de vos torrents, dans le stockage local du navigateur. Vous pouvez les effacer depuis les réglages du navigateur.</li>
+        <li>Les fichiers téléchargés, dans la mémoire de l'onglet, effacés à sa fermeture.</li>
+        <li>Une copie du site et du client pour le mode hors ligne (cache du service worker).</li>
+      </ul>
+      <h3>Ce qui est vu par d'autres</h3>
+      <ul>
+        <li><strong>Les trackers</strong> que vous utilisez voient votre adresse IP, l'empreinte des torrents auxquels vous participez et les offres de connexion WebRTC.</li>
+        <li><strong>Les pairs</strong> avec qui vous échangez voient votre adresse IP, comme dans tout réseau pair à pair.</li>
+        <li><strong>Les serveurs STUN</strong> (par défaut ceux de Google et Twilio) voient votre adresse IP quand votre navigateur cherche à la découvrir. Vous pouvez les changer dans les réglages.</li>
+        <li><strong>Les polices</strong> du site sont servies par Google Fonts.</li>
+      </ul>
+    </section>
+
+    <section id="usage">
+      <h2>Utilisation responsable</h2>
+      <p>BitTorrent est une technologie légale et précieuse : distributions Linux, logiciels libres, films et musiques sous licence libre, jeux de données scientifiques, archives publiques…</p>
+      <p>Partager ou télécharger des œuvres protégées sans l'autorisation de leurs ayants droit est illégal dans la plupart des pays. <strong>N'utilisez mxTorrent que pour des contenus dont vous avez les droits.</strong></p>
+    </section>
+
+    <section id="licence">
+      <h2>Licence</h2>
+      <p>Le code de mxTorrent (moteur, client, tracker, site) est distribué sous licence MIT.</p>
+      <pre>Copyright (c) 2026 Maxime Lestage
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.</pre>
+    </section>
+
+    <section id="tiers">
+      <h2>Composants tiers</h2>
+      <ul>
+        <li><a href="https://github.com/emilk/egui" rel="noopener">egui et eframe</a> — interface (MIT ou Apache-2.0).</li>
+        <li><a href="https://github.com/rustwasm/wasm-bindgen" rel="noopener">wasm-bindgen, web-sys, js-sys</a> — pont vers le navigateur (MIT ou Apache-2.0).</li>
+        <li><a href="https://github.com/mitsuhiko/sha1-smol" rel="noopener">sha1_smol</a> — empreintes SHA-1 (BSD-3-Clause).</li>
+        <li><a href="https://github.com/kennytm/qrcode-rust" rel="noopener">qrcode</a> — QR codes (MIT ou Apache-2.0).</li>
+        <li><a href="https://github.com/serde-rs/json" rel="noopener">serde et serde_json</a> — JSON (MIT ou Apache-2.0).</li>
+        <li><a href="https://threejs.org" rel="noopener">three.js</a> — 3D du site (MIT, <a href="vendor/three.LICENSE.txt">licence</a>).</li>
+        <li><a href="https://github.com/tokio-rs/axum" rel="noopener">axum et tokio</a> — tracker (MIT).</li>
+        <li>Polices <a href="https://fonts.google.com/specimen/Space+Grotesk" rel="noopener">Space Grotesk</a> et <a href="https://fonts.google.com/specimen/Inter" rel="noopener">Inter</a> (SIL Open Font License).</li>
+      </ul>
+      <p>mxTorrent est compatible avec le protocole de <a href="https://webtorrent.io" rel="noopener">WebTorrent</a> mais n'en reprend pas le code.</p>
+    </section>
+
+    <section id="accessibilite">
+      <h2>Accessibilité</h2>
+      <p>Le site suit les bonnes pratiques : navigation au clavier, lien d'évitement, textes alternatifs, contrastes élevés, et respect du réglage « réduire les animations » du système (les animations et la 3D sont alors figées).</p>
+      <p>Le client est dessiné par egui dans un canevas : son accessibilité aux lecteurs d'écran est encore limitée. Signalez tout obstacle dans les <a href="https://github.com/maxlestage/mxTorrent/issues" rel="noopener">tickets du projet</a>.</p>
+    </section>
+  </main>
+</body>
+</html>

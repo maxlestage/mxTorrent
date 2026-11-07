@@ -27,9 +27,17 @@ cp -r site/. "$OUT/"
 wasm-bindgen --target web --no-typescript --out-dir "$OUT/app/pkg" \
   "target/$TARGET/$PROFILE/mxtorrent_app.wasm"
 
-if command -v wasm-opt >/dev/null && [ "$PROFILE" = "release" ]; then
-  wasm-opt -Os --enable-bulk-memory --enable-nontrapping-float-to-int --enable-sign-ext --enable-mutable-globals \
-    -o "$OUT/app/pkg/mxtorrent_app_bg.wasm" "$OUT/app/pkg/mxtorrent_app_bg.wasm"
+# Optimisation de la taille (binaryen), si disponible : `npm ci` l'installe.
+WASM_OPT="${WASM_OPT:-$(command -v wasm-opt || echo node_modules/.bin/wasm-opt)}"
+if [ "$PROFILE" = "release" ] && [ -x "$WASM_OPT" ]; then
+  if "$WASM_OPT" -Os --enable-bulk-memory --enable-nontrapping-float-to-int --enable-sign-ext \
+      --enable-mutable-globals --enable-reference-types --enable-multivalue \
+      -o "$OUT/app/pkg/opt.wasm" "$OUT/app/pkg/mxtorrent_app_bg.wasm"; then
+    mv "$OUT/app/pkg/opt.wasm" "$OUT/app/pkg/mxtorrent_app_bg.wasm"
+  else
+    echo "wasm-opt a échoué : module non optimisé" >&2
+    rm -f "$OUT/app/pkg/opt.wasm"
+  fi
 fi
 
 # Version du cache hors ligne : change à chaque construction.

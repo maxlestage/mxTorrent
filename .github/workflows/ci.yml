@@ -1,0 +1,64 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+  WASM_BINDGEN_VERSION: 0.2.130
+
+jobs:
+  rust:
+    name: Format, lint et tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+          components: rustfmt, clippy
+      - uses: Swatinem/rust-cache@v2
+      - name: Format
+        run: cargo fmt --all --check
+      - name: Clippy (moteur et tracker)
+        run: cargo clippy -p mxtorrent-core -p mxtorrent-tracker --all-targets -- -D warnings
+      - name: Clippy (client WebAssembly)
+        run: cargo clippy -p mxtorrent-app --target wasm32-unknown-unknown -- -D warnings
+      - name: Tests
+        run: cargo test -p mxtorrent-core -p mxtorrent-tracker -p mxtorrent-app
+
+  e2e:
+    name: Bout en bout (deux navigateurs)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+      - uses: Swatinem/rust-cache@v2
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cargo/bin/wasm-bindgen
+          key: wasm-bindgen-${{ env.WASM_BINDGEN_VERSION }}
+      - name: wasm-bindgen
+        run: command -v wasm-bindgen || cargo install wasm-bindgen-cli --version $WASM_BINDGEN_VERSION --locked
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - name: Construction
+        run: ./scripts/build.sh
+      - name: Échange d'un fichier entre deux navigateurs
+        run: |
+          cargo build -p mxtorrent-tracker --release
+          ./target/release/mxtorrent-tracker --port 8000 --static dist &
+          sleep 1
+          node tests/e2e.cjs http://localhost:8000

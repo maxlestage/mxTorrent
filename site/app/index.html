@@ -23,8 +23,8 @@
     #boot.done { opacity: 0; pointer-events: none; }
     .orbit { position: relative; width: 120px; height: 120px; perspective: 600px; }
     .orbit i { position: absolute; inset: 0; border: 3px solid #8b5cf6; border-radius: 50%; animation: spin 2.4s linear infinite; }
-    .orbit i:nth-child(2) { border-color: #22d3ee; animation-duration: 3s; transform: rotateX(70deg); }
-    .orbit i:nth-child(3) { border-color: #ec4899; animation-duration: 3.6s; }
+    .orbit i:nth-child(2) { inset: 16px; border-color: #22d3ee; animation-duration: 3s; }
+    .orbit i:nth-child(3) { inset: 30px; border-color: #ec4899; animation-duration: 3.6s; }
     .orbit b { position: absolute; inset: 42px; border-radius: 50%; background: linear-gradient(135deg, #8b5cf6, #22d3ee); box-shadow: 0 0 40px #8b5cf6; }
     @keyframes spin { from { transform: rotateX(65deg) rotateZ(0); } to { transform: rotateX(65deg) rotateZ(360deg); } }
     .orbit i:nth-child(2) { animation-name: spin2; }

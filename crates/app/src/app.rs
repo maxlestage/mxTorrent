@@ -71,6 +71,11 @@ impl MxApp {
     pub fn new(cc: &eframe::CreationContext<'_>, engine: Rc<RefCell<Engine>>) -> MxApp {
         let prefs: Prefs = cc.storage.and_then(|s| eframe::get_value(s, STORAGE_KEY)).unwrap_or_default();
         set_english(prefs.english);
+        match web::query_param("lang").as_deref() {
+            Some("en") => set_english(true),
+            Some("fr") => set_english(false),
+            _ => {}
+        }
         {
             let mut e = engine.borrow_mut();
             e.settings = prefs.saved.settings.clone();
@@ -1374,20 +1379,18 @@ pub fn logo(pa: &egui::Painter, r: Rect, t: f32) {
     let c = r.center();
     let s = r.width() / 2.0;
     pa.circle_filled(c, s * 0.95, VIOLET.gamma_multiply(0.07));
-    for (k, col) in [VIOLET, CYAN, PINK].into_iter().enumerate() {
-        let tilt = k as f32 * std::f32::consts::TAU / 3.0 + t * 0.15;
-        let pts: Vec<Pos2> = (0..=48)
-            .map(|i| {
-                let a = i as f32 / 48.0 * std::f32::consts::TAU;
-                let (x, y) = (a.cos() * s * 0.85, a.sin() * s * 0.32);
-                Pos2::new(c.x + x * tilt.cos() - y * tilt.sin(), c.y + x * tilt.sin() + y * tilt.cos())
-            })
-            .collect();
-        pa.add(egui::Shape::line(pts, Stroke::new((s * 0.06).max(1.2), col.gamma_multiply(0.85))));
-        let a = t * (1.2 + k as f32 * 0.35) + k as f32 * 2.0;
-        let (x, y) = (a.cos() * s * 0.85, a.sin() * s * 0.32);
-        let dot = Pos2::new(c.x + x * tilt.cos() - y * tilt.sin(), c.y + x * tilt.sin() + y * tilt.cos());
-        pa.circle_filled(dot, (s * 0.1).max(2.0), col);
+    // Trois orbites de tailles différentes, chacune avec son pair.
+    let orbits = [(VIOLET, 0.9, 0.29, -24.0_f32), (CYAN, 0.72, 0.22, 42.0), (PINK, 0.53, 0.16, 100.0)];
+    for (k, (col, rx, ry, deg)) in orbits.into_iter().enumerate() {
+        let tilt = deg.to_radians() + t * 0.12;
+        let at = |a: f32| {
+            let (x, y) = (a.cos() * s * rx, a.sin() * s * ry);
+            Pos2::new(c.x + x * tilt.cos() - y * tilt.sin(), c.y + x * tilt.sin() + y * tilt.cos())
+        };
+        let pts: Vec<Pos2> = (0..=56).map(|i| at(i as f32 / 56.0 * std::f32::consts::TAU)).collect();
+        pa.add(egui::Shape::line(pts, Stroke::new((s * (0.075 - k as f32 * 0.012)).max(1.2), col.gamma_multiply(0.9))));
+        let dot = at(t * (1.0 + k as f32 * 0.45) + k as f32 * 2.0);
+        pa.circle_filled(dot, (s * (0.1 - k as f32 * 0.015)).max(2.0), col);
     }
     pa.circle_filled(c, s * 0.22, mix(VIOLET, CYAN, (t * 0.7).sin() * 0.5 + 0.5));
     pa.circle_filled(c - Vec2::splat(s * 0.06), s * 0.08, Color32::from_white_alpha(120));
