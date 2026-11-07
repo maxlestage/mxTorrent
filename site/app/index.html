@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <title>mxTorrent — le client</title>
+  <meta name="description" content="Le client BitTorrent de mxTorrent : Rust, WebAssembly, egui et WebRTC, directement dans le navigateur.">
+  <meta name="theme-color" content="#07070d">
+  <meta name="color-scheme" content="dark light">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="mxTorrent">
+  <link rel="manifest" href="../manifest.webmanifest">
+  <link rel="icon" href="../assets/icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="../assets/icon-192.png">
+  <link rel="modulepreload" href="./pkg/mxtorrent_app.js">
+  <link rel="preload" href="./pkg/mxtorrent_app_bg.wasm" as="fetch" type="application/wasm" crossorigin>
+  <style>
+    html, body { margin: 0; padding: 0; height: 100%; overflow: hidden; background: #07070d; color: #ececfa; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+    body { padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); box-sizing: border-box; }
+    canvas#mx { display: block; width: 100%; height: 100%; outline: none; touch-action: none; }
+    #boot { position: fixed; inset: 0; display: grid; place-items: center; background: radial-gradient(60% 50% at 50% 40%, #1b1240 0%, #07070d 70%); transition: opacity .5s ease; z-index: 2; }
+    #boot.done { opacity: 0; pointer-events: none; }
+    .orbit { position: relative; width: 120px; height: 120px; perspective: 600px; }
+    .orbit i { position: absolute; inset: 0; border: 3px solid #8b5cf6; border-radius: 50%; animation: spin 2.4s linear infinite; }
+    .orbit i:nth-child(2) { border-color: #22d3ee; animation-duration: 3s; transform: rotateX(70deg); }
+    .orbit i:nth-child(3) { border-color: #ec4899; animation-duration: 3.6s; }
+    .orbit b { position: absolute; inset: 42px; border-radius: 50%; background: linear-gradient(135deg, #8b5cf6, #22d3ee); box-shadow: 0 0 40px #8b5cf6; }
+    @keyframes spin { from { transform: rotateX(65deg) rotateZ(0); } to { transform: rotateX(65deg) rotateZ(360deg); } }
+    .orbit i:nth-child(2) { animation-name: spin2; }
+    .orbit i:nth-child(3) { animation-name: spin3; }
+    @keyframes spin2 { from { transform: rotateY(65deg) rotateZ(0); } to { transform: rotateY(65deg) rotateZ(360deg); } }
+    @keyframes spin3 { from { transform: rotateX(-50deg) rotateY(40deg) rotateZ(0); } to { transform: rotateX(-50deg) rotateY(40deg) rotateZ(360deg); } }
+    #boot p { margin: 24px 0 0; text-align: center; color: #9696b4; font-size: 14px; }
+    #boot strong { display: block; color: #ececfa; font-size: 20px; letter-spacing: .02em; }
+    #boot .err { color: #f87171; max-width: 26rem; padding: 0 1rem; }
+    noscript { position: fixed; inset: 0; display: grid; place-items: center; background: #07070d; }
+  </style>
+</head>
+<body>
+  <canvas id="mx"></canvas>
+  <div id="boot" role="status" aria-live="polite">
+    <div>
+      <div class="orbit" aria-hidden="true"><i></i><i></i><i></i><b></b></div>
+      <p><strong>mxTorrent</strong><span id="boot-msg">Chargement du moteur WebAssembly…</span></p>
+    </div>
+  </div>
+  <noscript>mxTorrent a besoin de JavaScript et de WebAssembly.</noscript>
+  <script type="module">
+    import init, { WebHandle } from "./pkg/mxtorrent_app.js";
+    const boot = document.getElementById("boot");
+    const msg = document.getElementById("boot-msg");
+    const fail = (text) => { msg.textContent = text; msg.className = "err"; };
+    if (!("RTCPeerConnection" in window)) {
+      fail("Ce navigateur ne connaît pas WebRTC : mxTorrent ne peut pas s'y connecter à des pairs.");
+    }
+    try {
+      await init();
+      const handle = new WebHandle();
+      window.mxtorrent = handle;
+      await handle.start(document.getElementById("mx"));
+      boot.classList.add("done");
+      setTimeout(() => boot.remove(), 600);
+
+      // Fichiers .torrent ouverts depuis le système (PWA installée, Chromium).
+      if ("launchQueue" in window) {
+        window.launchQueue.setConsumer(async (params) => {
+          for (const h of params.files || []) {
+            const f = await h.getFile();
+            handle.add_torrent_file(f.name, new Uint8Array(await f.arrayBuffer()));
+          }
+        });
+      }
+      // Fichiers partagés depuis le menu « Partager » d'Android (voir sw.js).
+      if (location.hash === "#shared" && "caches" in window) {
+        const cache = await caches.open("mx-share");
+        for (const req of await cache.keys()) {
+          const res = await cache.match(req);
+          const name = decodeURIComponent(res.headers.get("x-name") || "fichier");
+          const bytes = new Uint8Array(await res.arrayBuffer());
+          if (name.toLowerCase().endsWith(".torrent")) handle.add_torrent_file(name, bytes);
+          else handle.share_file(name, bytes);
+          await cache.delete(req);
+        }
+        history.replaceState(null, "", location.pathname);
+      }
+      // Surveillance : si l'application plante, on le dit plutôt que de figer.
+      setInterval(() => {
+        if (handle.has_panicked()) {
+          boot.classList.remove("done");
+          document.body.appendChild(boot);
+          fail("mxTorrent a rencontré une erreur : " + (handle.panic_message() || "inconnue") + ". Rechargez la page.");
+        }
+      }, 2000);
+    } catch (e) {
+      console.error(e);
+      fail("Impossible de démarrer : " + e + ". Il faut un navigateur récent avec WebAssembly et WebGL.");
+    }
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.register("../sw.js", { scope: "../" }).catch(() => {});
+    }
+  </script>
+</body>
+</html>

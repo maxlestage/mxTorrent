@@ -1,0 +1,37 @@
+[package]
+name = "mxtorrent-app"
+description = "Le client mxTorrent : egui dans le navigateur, BitTorrent sur WebRTC."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+mxtorrent-core = { path = "../core" }
+eframe = { version = "0.37", default-features = false, features = ["glow", "default_fonts", "persistence"] }
+egui = "0.37"
+log = "0.4"
+qrcode = { version = "0.14", default-features = false }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+wasm-bindgen = "=0.2.130"
+wasm-bindgen-futures = "0.4"
+js-sys = "0.3"
+console_error_panic_hook = "0.1"
+web-sys = { version = "0.3", features = [
+  "Window", "Document", "Element", "HtmlElement", "HtmlCanvasElement", "HtmlInputElement", "HtmlAnchorElement",
+  "Location", "Navigator", "Storage", "Url", "Blob", "BlobPropertyBag", "File", "FileList",
+  "WebSocket", "MessageEvent", "BinaryType", "CloseEvent", "Event", "EventTarget",
+  "RtcPeerConnection", "RtcConfiguration", "RtcIceServer", "RtcDataChannel", "RtcDataChannelInit",
+  "RtcDataChannelType", "RtcDataChannelEvent", "RtcSessionDescription", "RtcSessionDescriptionInit",
+  "RtcSdpType", "RtcIceGatheringState", "RtcPeerConnectionState", "RtcDataChannelState",
+  "UrlSearchParams", "History", "Request", "RequestInit", "RequestMode", "Response", "Headers", "Crypto", "Performance",
+  "console",
+] }

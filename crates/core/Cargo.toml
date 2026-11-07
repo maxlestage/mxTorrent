@@ -1,0 +1,13 @@
+[package]
+name = "mxtorrent-core"
+description = "BitTorrent sans entrées-sorties : bencode, .torrent, liens magnet, protocole des pairs, sélection des pièces et protocole des trackers WebTorrent."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+sha1_smol = "1"
+serde_json = "1"
