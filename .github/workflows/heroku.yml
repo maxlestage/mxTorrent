@@ -1,0 +1,98 @@
+# Déploie master sur Heroku (site, client et tracker WebSocket) sans la CLI Heroku :
+# tout passe par l'API Heroku, donc tout se règle et se lance depuis un téléphone.
+# Heroku construit l'application lui-même avec le buildpack emk/rust (pile heroku-26),
+# configuré par RustConfig, heroku-build.sh et Procfile.
+#
+# Réglage, une fois (GitHub → Settings → Secrets and variables → Actions) :
+#   - secret   HEROKU_API_KEY   Heroku → Account settings → API Key → Reveal
+#   - variable HEROKU_APP_NAME  le nom de l'application (créée si elle n'existe pas)
+#   - variable facultative HEROKU_REGION : eu (par défaut) ou us
+# Sans eux, le déploiement est simplement sauté.
+
+name: Déployer sur Heroku
+
+# Chaque envoi sur master, et à la main : Actions → Déployer sur Heroku → Run workflow
+# (l'application GitHub du téléphone le permet aussi).
+on:
+  push:
+    branches: [master]
+    paths-ignore:
+      - "**.md"
+  workflow_dispatch:
+
+concurrency:
+  group: heroku
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Déployer
+    runs-on: ubuntu-latest
+    env:
+      HEROKU_API_KEY: ${{ secrets.HEROKU_API_KEY }}
+      APP: ${{ vars.HEROKU_APP_NAME }}
+      REGION: ${{ vars.HEROKU_REGION || 'eu' }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Construire et publier sur Heroku
+        run: |
+          set -euo pipefail
+          if [ -z "${HEROKU_API_KEY:-}" ] || [ -z "${APP:-}" ]; then
+            echo "::notice::Heroku n'est pas configuré : ajoutez le secret HEROKU_API_KEY et la variable HEROKU_APP_NAME (Settings → Secrets and variables → Actions)."
+            exit 0
+          fi
+          api() {
+            curl -fsS -H "Accept: application/vnd.heroku+json; version=3" \
+              -H "Authorization: Bearer $HEROKU_API_KEY" \
+              -H "Content-Type: application/json" "$@"
+          }
+          info="$RUNNER_TEMP/app.json"
+          status=$(curl -sS -o "$info" -w '%{http_code}' \
+            -H "Accept: application/vnd.heroku+json; version=3" \
+            -H "Authorization: Bearer $HEROKU_API_KEY" \
+            "https://api.heroku.com/apps/$APP")
+          case "$status" in
+            200) echo "Application $APP trouvée." ;;
+            404)
+              echo "Création de l'application $APP ($REGION)…"
+              api -X POST https://api.heroku.com/apps \
+                -d "{\"name\":\"$APP\",\"region\":\"$REGION\",\"stack\":\"heroku-26\"}" > "$info" ;;
+            401) echo "::error::Heroku refuse la clé d'API (HEROKU_API_KEY)."; exit 1 ;;
+            403) echo "::error::Ce compte Heroku ne peut pas utiliser l'application « $APP » (le nom est peut-être pris)."; exit 1 ;;
+            *) echo "::error::Réponse inattendue de Heroku ($status) : $(cat "$info")"; exit 1 ;;
+          esac
+          if [ "$(jq -r '.build_stack.name' "$info")" = container ]; then
+            echo "L'application est sur la pile container : passage à heroku-26…"
+            api -X PATCH "https://api.heroku.com/apps/$APP" -d '{"build_stack":"heroku-26"}' > /dev/null
+          fi
+          api -X PUT "https://api.heroku.com/apps/$APP/buildpack-installations" \
+            -d '{"updates":[{"buildpack":"emk/rust"}]}' > /dev/null
+
+          git archive --format=tar.gz -o "$RUNNER_TEMP/source.tgz" HEAD
+          sources=$(api -X POST https://api.heroku.com/sources)
+          curl -fsS -X PUT -H "Content-Type:" --data-binary @"$RUNNER_TEMP/source.tgz" \
+            "$(jq -r '.source_blob.put_url' <<< "$sources")"
+
+          echo "Construction sur Heroku (la première prend plusieurs minutes)…"
+          build=$(api -X POST "https://api.heroku.com/apps/$APP/builds" \
+            -d "{\"source_blob\":{\"url\":\"$(jq -r '.source_blob.get_url' <<< "$sources")\",\"version\":\"$GITHUB_SHA\"}}")
+          id=$(jq -r '.id' <<< "$build")
+          curl -sSN "$(jq -r '.output_stream_url' <<< "$build")" || true
+
+          result=pending
+          for _ in $(seq 1 360); do
+            result=$(api "https://api.heroku.com/apps/$APP/builds/$id" | jq -r '.status')
+            [ "$result" != "pending" ] && break
+            sleep 5
+          done
+          if [ "$result" != "succeeded" ]; then
+            echo "::error::La construction Heroku s'est terminée avec le statut « $result »."
+            exit 1
+          fi
+          url=$(api "https://api.heroku.com/apps/$APP" | jq -r '.web_url')
+          # Vérifie que le site répond.
+          for _ in $(seq 1 30); do curl -fsS -o /dev/null "$url" && break; sleep 4; done
+          echo "### 🚀 Déployé sur [$url]($url)" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Client : ${url}app/" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Tracker : wss://$(sed 's#https://##; s#/$##' <<< "$url")/announce" >> "$GITHUB_STEP_SUMMARY"
+          echo "Déployé : $url"

@@ -84,6 +84,7 @@ impl MxApp {
             }
             e.restore(prefs.saved);
         }
+        web::detect_local_tracker();
         // Lien magnet transmis par le système (gestionnaire de protocole, partage Android…).
         for key in ["magnet", "url", "text", "torrent"] {
             if let Some(v) = web::query_param(key) {

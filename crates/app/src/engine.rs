@@ -320,6 +320,25 @@ impl Engine {
         self.ensure_trackers();
     }
 
+    /// Ajoute un tracker aux réglages et à tous les torrents publics.
+    pub fn add_tracker_everywhere(&mut self, url: String) {
+        if !self.settings.trackers.contains(&url) {
+            self.settings.trackers.insert(0, url.clone());
+            self.logline(format!("tracker du serveur : {url}"));
+        }
+        for e in &mut self.entries {
+            if e.torrent.metainfo().is_some_and(|m| m.info.private) {
+                continue;
+            }
+            if !e.torrent.trackers.contains(&url) {
+                e.torrent.trackers.push(url.clone());
+            }
+            e.trackers.entry(url.clone()).or_default();
+        }
+        self.dirty = true;
+        self.ensure_trackers();
+    }
+
     pub fn remove(&mut self, h: &InfoHash) {
         let Some(i) = self.find(h) else { return };
         self.announce_stop(i);
@@ -516,6 +535,7 @@ impl Engine {
                     }
                 }
             }
+            NetEvent::LocalTracker(url) => self.add_tracker_everywhere(url),
             NetEvent::Link(l) => {
                 if let Err(e) = self.add_link(&l) {
                     self.toast(e, false);

@@ -13,7 +13,9 @@ async function openClient(browser, name) {
   page.on("pageerror", (e) => console.log(`[${name}] erreur : ${e.message}`));
   await page.goto(BASE + "/app/");
   await page.waitForFunction(() => window.mxtorrent && document.getElementById("boot") === null, null, { timeout: 60000 });
-  await page.evaluate((t) => window.mxtorrent.set_trackers([t]), TRACKER);
+  // Mode AUTO_TRACKER : on attend que le client ait trouvé le tracker de son propre serveur.
+  if (process.env.AUTO_TRACKER) await page.waitForTimeout(1500);
+  if (!process.env.AUTO_TRACKER) await page.evaluate((t) => window.mxtorrent.set_trackers([t]), TRACKER);
   return page;
 }
 

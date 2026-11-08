@@ -8,7 +8,9 @@
 Un client BitTorrent écrit en Rust, compilé en WebAssembly, dessiné avec egui.
 Rien à installer : il tourne dans un onglet, sur ordinateur comme sur téléphone, et s'installe comme une application (PWA).
 
-[Site](https://maxlestage.github.io/mxTorrent/) · [Ouvrir le client](https://maxlestage.github.io/mxTorrent/app/) · [Tracker auto-hébergé](#tracker-auto-hébergé)
+[Site](https://maxlestage.github.io/mxTorrent/) · [Ouvrir le client](https://maxlestage.github.io/mxTorrent/app/) · [Déployer sur Heroku depuis un téléphone](#déployer-sur-heroku-depuis-un-téléphone)
+
+[![Déployer sur Heroku](https://www.herokucdn.com/deploy/button.svg)](https://heroku.com/deploy?template=https://github.com/maxlestage/mxTorrent)
 
 </div>
 
@@ -93,6 +95,41 @@ cargo run -p mxtorrent-tracker --release -- --port 8000
 
 Placez-le derrière un proxy HTTPS (Caddy, nginx…) pour obtenir une adresse `wss://`, puis ajoutez-la
 dans **Réglages → Trackers WebSocket** du client. Il respecte la variable `PORT` (Heroku, Render, Fly.io…).
+
+## Déployer sur Heroku depuis un téléphone
+
+Un seul serveur Heroku sert **le site, le client et un tracker WebSocket** (`wss://<app>.herokuapp.com/announce`).
+Le client le détecte tout seul : vos échanges ne dépendent plus des trackers publics.
+
+**Première fois, en un appui :**
+
+1. Sur le téléphone, ouvrez <https://heroku.com/deploy?template=https://github.com/maxlestage/mxTorrent>
+   (ou le bouton violet en haut de cette page).
+2. Choisissez un nom d'application et une région (Europe), puis appuyez sur **Deploy app**.
+3. Heroku lit [`app.json`](app.json) et construit avec le
+   [buildpack emk/rust](https://elements.heroku.com/buildpacks/emk/heroku-buildpack-rust) sur la pile
+   heroku-26 : [`RustConfig`](RustConfig) installe Rust, puis [`heroku-build.sh`](heroku-build.sh)
+   compile le serveur, le client WebAssembly (wasm-bindgen et wasm-opt téléchargés) et le site ;
+   le [`Procfile`](Procfile) lance `bin/mxtorrent-tracker --static dist`. La première construction
+   prend une dizaine de minutes, les suivantes sont plus rapides (cache).
+4. **View** : le site est en ligne, le client sur `/app/`.
+
+**Ensuite, chaque envoi sur `master` se déploie tout seul :**
+
+1. Heroku → avatar → *Account settings* → *API Key* → **Reveal**, copiez la clé.
+2. GitHub → le dépôt → *Settings* → *Secrets and variables* → *Actions* :
+   - onglet **Secrets** → *New repository secret* : `HEROKU_API_KEY` = la clé ;
+   - onglet **Variables** → *New repository variable* : `HEROKU_APP_NAME` = le nom de l'application
+     (elle est créée si elle n'existe pas ; `HEROKU_REGION` facultatif : `eu` par défaut, ou `us`).
+3. C'est tout : [`.github/workflows/heroku.yml`](.github/workflows/heroku.yml) déploie chaque envoi
+   sur `master` par l'API Heroku, sans CLI. Pour relancer à la main : *Actions* →
+   **Déployer sur Heroku** → *Run workflow* (possible depuis l'application GitHub).
+
+Sans GitHub Actions, depuis un ordinateur : `heroku create --stack heroku-26 --buildpack emk/rust`
+puis `git push heroku master`. Sur une application existante : *Settings* → *Buildpacks* →
+*Add buildpack* → `emk/rust` (la pile ne doit pas être « container »).
+
+Heroku n'a pas d'offre gratuite : un dyno Eco coûte environ 5 $ par mois.
 
 ## Déploiement sur GitHub Pages
 

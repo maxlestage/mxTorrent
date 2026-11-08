@@ -22,6 +22,8 @@ use std::collections::HashMap;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 use tokio::sync::mpsc::{UnboundedSender, unbounded_channel};
+use tower_http::services::{ServeDir, ServeFile};
+use tower_http::set_status::SetStatus;
 
 const INTERVAL: u64 = 120;
 const MAX_OFFERS: usize = 20;
@@ -221,6 +223,12 @@ async fn announce(MaybeWs(ws): MaybeWs, State(t): State<Shared>) -> Response {
     }
 }
 
+/// Les fichiers du site ; ce qui n'existe pas reçoit la page 404 du site.
+fn static_files(dir: &str) -> ServeDir<SetStatus<ServeFile>> {
+    let not_found = std::path::Path::new(dir).join("404.html");
+    ServeDir::new(dir).append_index_html_on_directories(true).not_found_service(ServeFile::new(not_found))
+}
+
 #[tokio::main]
 async fn main() {
     let mut port: u16 = std::env::var("PORT").ok().and_then(|p| p.parse().ok()).unwrap_or(8000);
@@ -245,7 +253,7 @@ async fn main() {
     app = match &static_dir {
         Some(dir) => {
             // `/` reste un tracker pour les clients WebSocket, et sert le site sinon.
-            let files = tower_http::services::ServeDir::new(dir).append_index_html_on_directories(true);
+            let files = static_files(dir);
             let t2 = tracker.clone();
             app.route_service(
                 "/",
@@ -260,11 +268,12 @@ async fn main() {
                     }
                 }),
             )
-            .fallback_service(tower_http::services::ServeDir::new(dir).append_index_html_on_directories(true))
+            .fallback_service(static_files(dir))
         }
         None => app.route("/", get(announce)),
     };
-    let app = app.with_state(tracker);
+    // Les WebSocket ne sont pas compressées ; les fichiers du site, si (wasm, JS, CSS, HTML).
+    let app = app.with_state(tracker).layer(tower_http::compression::CompressionLayer::new());
     let addr = std::net::SocketAddr::from(([0, 0, 0, 0], port));
     let listener = tokio::net::TcpListener::bind(addr).await.expect("port occupé");
     println!("mxtorrent-tracker : ws://localhost:{port}/announce");

@@ -9,8 +9,11 @@ cd "$(dirname "$0")/.."
 PROFILE="${PROFILE:-release}"
 TARGET=wasm32-unknown-unknown
 OUT=dist
+# Sur Heroku, Cargo construit dans le cache du buildpack (CARGO_TARGET_DIR).
+TARGET_DIR="${CARGO_TARGET_DIR:-target}"
+WASM_BINDGEN="${WASM_BINDGEN:-wasm-bindgen}"
 
-command -v wasm-bindgen >/dev/null || {
+command -v "$WASM_BINDGEN" >/dev/null || {
   echo "wasm-bindgen manque : cargo install wasm-bindgen-cli --version 0.2.130" >&2
   exit 1
 }
@@ -24,8 +27,8 @@ fi
 rm -rf "$OUT"
 mkdir -p "$OUT"
 cp -r site/. "$OUT/"
-wasm-bindgen --target web --no-typescript --out-dir "$OUT/app/pkg" \
-  "target/$TARGET/$PROFILE/mxtorrent_app.wasm"
+"$WASM_BINDGEN" --target web --no-typescript --out-dir "$OUT/app/pkg" \
+  "$TARGET_DIR/$TARGET/$PROFILE/mxtorrent_app.wasm"
 
 # Optimisation de la taille (binaryen), si disponible : `npm ci` l'installe.
 WASM_OPT="${WASM_OPT:-$(command -v wasm-opt || echo node_modules/.bin/wasm-opt)}"

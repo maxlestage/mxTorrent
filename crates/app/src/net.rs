@@ -45,6 +45,8 @@ pub enum NetEvent {
     Share(Vec<(String, Vec<u8>)>),
     /// Fichiers `.torrent` choisis, déposés ou ouverts par le système.
     TorrentFiles(Vec<(String, Vec<u8>)>),
+    /// Le serveur qui sert le client est aussi un tracker (mxtorrent-tracker, sur Heroku par exemple).
+    LocalTracker(String),
     /// Un lien magnet ou une URL reçus de la page (paramètre, collage, JavaScript).
     Link(String),
     /// Un `.torrent` téléchargé depuis une URL.

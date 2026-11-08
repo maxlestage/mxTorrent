@@ -198,3 +198,21 @@ pub fn notify_title(text: &str) {
         doc.set_title(text);
     }
 }
+
+/// Si la page est servie par mxtorrent-tracker (Heroku, serveur perso…), ce serveur
+/// est aussi un tracker : on le détecte en lisant `../announce`.
+pub fn detect_local_tracker() {
+    let loc = window().location();
+    let (Ok(proto), Ok(host), Ok(path)) = (loc.protocol(), loc.host(), loc.pathname()) else { return };
+    // /app/ → / ; /mxTorrent/app/ → /mxTorrent/
+    let base = path.trim_end_matches('/').trim_end_matches("/app").trim_end_matches('/').to_string();
+    let http = format!("{proto}//{host}{base}/announce");
+    let ws = format!("{}//{host}{base}/announce", if proto == "https:" { "wss:" } else { "ws:" });
+    wasm_bindgen_futures::spawn_local(async move {
+        if let Ok((_, body)) = fetch_bytes(&http, None).await
+            && body.starts_with(b"mxtorrent-tracker")
+        {
+            crate::net::push(crate::net::NetEvent::LocalTracker(ws));
+        }
+    });
+}

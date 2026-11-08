@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Page introuvable — mxTorrent</title>
   <meta name="theme-color" content="#07070d">
-  <link rel="icon" href="/mxTorrent/assets/icon.svg" type="image/svg+xml">
+  <link rel="icon" href="data:," >
   <style>
     body { margin: 0; min-height: 100svh; display: grid; place-items: center; background: radial-gradient(60% 50% at 50% 40%, #1b1240, #07070d 70%); color: #ececfa; font: 16px/1.6 system-ui, sans-serif; text-align: center; padding: 16px; box-sizing: border-box; }
     h1 { font-size: clamp(80px, 30vw, 180px); margin: 0; line-height: 1; background: linear-gradient(120deg, #8b5cf6, #22d3ee, #ec4899); -webkit-background-clip: text; background-clip: text; color: transparent; animation: float 4s ease-in-out infinite; }
@@ -19,8 +19,14 @@
   <main>
     <h1>404</h1>
     <p>Cette pièce manque à l'essaim. Elle n'existe peut-être pas.</p>
-    <a href="/mxTorrent/">Accueil</a>
-    <a class="g" href="/mxTorrent/app/">Ouvrir le client</a>
+    <a id="home" href="/">Accueil</a>
+    <a id="app" class="g" href="/app/">Ouvrir le client</a>
   </main>
+  <script>
+    // Le site vit à la racine (Heroku, serveur perso) ou sous /mxTorrent/ (GitHub Pages).
+    const base = location.pathname.startsWith("/mxTorrent/") ? "/mxTorrent/" : "/";
+    document.getElementById("home").href = base;
+    document.getElementById("app").href = base + "app/";
+  </script>
 </body>
 </html>

@@ -143,6 +143,7 @@ export const EN = {
   "ft.resources": "Resources",
   "ft.docs": "Documentation",
   "ft.tracker": "Self-hosted tracker",
+  "ft.heroku": "Deploy to Heroku",
   "ft.core": "mxtorrent-core engine",
   "ft.bug": "Report an issue",
   "ft.contribute": "Contribute",

@@ -11,7 +11,6 @@ concurrency:
 
 env:
   CARGO_TERM_COLOR: always
-  WASM_BINDGEN_VERSION: 0.2.130
 
 jobs:
   rust:
@@ -42,23 +41,19 @@ jobs:
         with:
           targets: wasm32-unknown-unknown
       - uses: Swatinem/rust-cache@v2
-      - uses: actions/cache@v4
-        with:
-          path: ~/.cargo/bin/wasm-bindgen
-          key: wasm-bindgen-${{ env.WASM_BINDGEN_VERSION }}
-      - name: wasm-bindgen
-        run: command -v wasm-bindgen || cargo install wasm-bindgen-cli --version $WASM_BINDGEN_VERSION --locked
       - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
       - run: npm ci
       - run: npx playwright install --with-deps chromium
-      - name: Construction
-        run: ./scripts/build.sh
+      - name: Construction, comme sur Heroku (heroku-build.sh)
+        run: ./heroku-build.sh
       - name: Échange d'un fichier entre deux navigateurs
         run: |
-          cargo build -p mxtorrent-tracker --release
-          ./target/release/mxtorrent-tracker --port 8000 --static dist &
+          # La commande du Procfile, avec le port fourni comme le fait Heroku.
+          PORT=8000 bin/mxtorrent-tracker --static dist &
           sleep 1
           node tests/e2e.cjs http://localhost:8000
+          # Le client doit aussi trouver seul le tracker du serveur qui le sert.
+          AUTO_TRACKER=1 node tests/e2e.cjs http://localhost:8000

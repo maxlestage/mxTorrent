@@ -1,0 +1,12 @@
+{
+  "name": "mxTorrent",
+  "description": "Client BitTorrent dans le navigateur (Rust, WebAssembly, egui, WebRTC), son site vitrine PWA et son tracker WebSocket compatible WebTorrent.",
+  "repository": "https://github.com/maxlestage/mxTorrent",
+  "website": "https://github.com/maxlestage/mxTorrent",
+  "logo": "https://raw.githubusercontent.com/maxlestage/mxTorrent/master/site/assets/icon-192.png",
+  "keywords": ["rust", "webassembly", "egui", "webrtc", "bittorrent", "webtorrent", "pwa"],
+  "stack": "heroku-26",
+  "buildpacks": [{ "url": "emk/rust" }],
+  "formation": { "web": { "quantity": 1, "size": "eco" } },
+  "success_url": "/"
+}

@@ -1,0 +1,10 @@
+# Heroku avec le buildpack emk/rust
+# (https://elements.heroku.com/buildpacks/emk/heroku-buildpack-rust), pile heroku-26.
+#
+# Le buildpack lit ce fichier, installe Rust, puis lancerait un simple
+# `cargo build --release` à la racine. Ce n'est pas suffisant ici : il faut aussi
+# le client WebAssembly, wasm-bindgen et le site. On saute donc sa construction et
+# heroku-build.sh prend le relais une fois Rust installé.
+VERSION=stable
+RUST_SKIP_BUILD=1
+trap 'status=$?; if [ "$status" -eq 0 ]; then ENV_DIR="${ENV_DIR:-}" bash "$BUILD_DIR/heroku-build.sh" || exit 1; fi' EXIT
