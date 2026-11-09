@@ -1,0 +1,37 @@
+name: NEXORA · Claude Code
+
+on:
+  workflow_dispatch:
+    inputs:
+      instruction:
+        description: "Ce que l'agent doit faire"
+        required: true
+  issue_comment:
+    types: [created]
+  pull_request_review_comment:
+    types: [created]
+  issues:
+    types: [opened, assigned]
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+  id-token: write
+  actions: read
+
+jobs:
+  claude:
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      contains(github.event.comment.body, '@claude') ||
+      contains(github.event.issue.body, '@claude')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+      - uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          prompt: ${{ github.event.inputs.instruction }}
