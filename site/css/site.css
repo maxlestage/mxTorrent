@@ -28,11 +28,22 @@
 html { scroll-behavior: smooth; -webkit-text-size-adjust: 100%; }
 body {
   margin: 0;
+  max-width: 100%;
   background: var(--bg);
   color: var(--text);
   font: 16px/1.6 var(--body);
   overflow-x: hidden;
+  overflow-wrap: break-word;
   -webkit-font-smoothing: antialiased;
+}
+/* Aucun défilement horizontal : « clip » coupe ce qui dépasse sans créer de zone
+   de défilement (le panneau épinglé « Fonctionnement » reste collant). */
+@supports (overflow: clip) {
+  html, body { overflow-x: clip; }
+}
+main { max-width: 100%; }
+@supports (overflow: clip) {
+  main { overflow-x: clip; }
 }
 img, svg, canvas { display: block; max-width: 100%; }
 a { color: inherit; text-decoration: none; }
@@ -239,7 +250,7 @@ p { margin: 0; }
 .step p { color: var(--muted); }
 
 /* ---------------------------------------------------------------- aperçu */
-.devices { position: relative; display: grid; place-items: center; padding: 20px 0 50px; perspective: 1600px; }
+.devices { position: relative; display: grid; place-items: center; padding: 20px 0 50px; perspective: 1600px; overflow-x: clip; }
 .laptop { width: 100%; max-width: 860px; transform: rotateX(14deg) rotateY(-10deg); transform-style: preserve-3d; transition: transform .2s; }
 .laptop-screen { padding: 2.2%; border-radius: 16px 16px 4px 4px; background: #1b1b2a; border: 1px solid #2c2c44; box-shadow: 0 40px 80px -30px #000, 0 0 0 1px #000 inset; }
 .laptop-screen img { border-radius: 8px; width: 100%; height: auto; }
@@ -261,9 +272,13 @@ p { margin: 0; }
 .checks li::before { content: "✓"; position: absolute; left: 16px; top: 16px; width: 26px; height: 26px; display: grid; place-items: center; border-radius: 50%; background: color-mix(in srgb, var(--green) 20%, transparent); color: var(--green); font-weight: 700; font-size: 14px; }
 .checks b { display: block; font-family: var(--display); }
 .checks span { color: var(--muted); font-size: 15px; }
-.compare { margin-top: 40px; overflow-x: auto; border-radius: var(--radius); border: 1px solid var(--border); background: var(--surface); }
-.compare table { width: 100%; min-width: 560px; border-collapse: collapse; font-size: 15px; }
-.compare th, .compare td { padding: 14px 16px; text-align: left; border-bottom: 1px solid var(--border); }
+.compare { margin-top: 40px; overflow: hidden; border-radius: var(--radius); border: 1px solid var(--border); background: var(--surface); }
+.compare table { width: 100%; border-collapse: collapse; font-size: 15px; table-layout: fixed; }
+.compare th, .compare td { padding: 14px 16px; text-align: left; vertical-align: top; border-bottom: 1px solid var(--border); overflow-wrap: anywhere; hyphens: auto; }
+@media (max-width: 639px) {
+  .compare table { font-size: 13px; }
+  .compare th, .compare td { padding: 10px 8px; }
+}
 .compare thead th { font-family: var(--display); color: var(--muted); font-weight: 600; }
 .compare thead th:nth-child(2) { color: var(--violet); }
 .compare tbody th { font-weight: 600; }
@@ -315,7 +330,8 @@ p { margin: 0; }
 .pulse.off { background: var(--amber); }
 .footer-magnet { display: flex; gap: 6px; margin-top: 18px; max-width: 380px; padding: 4px 4px 4px 14px; border-radius: 999px; border: 1px solid var(--border); background: var(--surface); }
 .footer-magnet input { flex: 1; min-width: 0; background: transparent; border: 0; color: var(--text); font: 14px var(--body); outline: none; }
-.footer-cols { display: grid; grid-template-columns: repeat(2, 1fr); gap: 30px 20px; }
+.footer-cols { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 30px 20px; }
+.footer-top > *, .footer-middle > *, .footer-cols > *, .security-grid > * { min-width: 0; }
 .footer-col h3, .footer-middle h3 { font-size: 13px; letter-spacing: .12em; text-transform: uppercase; color: var(--text); margin-bottom: 14px; }
 .footer-col ul, .compat ul, .footer-shortcuts ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 10px; }
 .footer-col a { color: var(--muted); position: relative; transition: color .2s; font-size: 15px; }
@@ -333,7 +349,8 @@ p { margin: 0; }
 kbd { display: inline-block; min-width: 26px; padding: 2px 7px; border-radius: 6px; background: var(--surface2); border: 1px solid var(--border); border-bottom-width: 3px; font: 600 12px var(--display); color: var(--text); text-align: center; }
 .footer-wordmark {
   margin: 40px auto 0; max-width: var(--max);
-  font: 700 clamp(64px, 21vw, 260px)/0.9 var(--display); letter-spacing: -.05em; text-align: center;
+  font: 700 clamp(48px, 17vw, 260px)/0.9 var(--display); letter-spacing: -.05em; text-align: center;
+  white-space: nowrap; overflow: hidden;
   color: transparent; -webkit-text-stroke: 1px color-mix(in srgb, var(--violet) 50%, transparent);
   background: var(--grad); background-size: 200% auto; -webkit-background-clip: text; background-clip: text;
   -webkit-text-fill-color: transparent; opacity: .18;
