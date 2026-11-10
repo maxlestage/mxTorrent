@@ -61,7 +61,7 @@ pub fn parse_response(b: &[u8]) -> Option<Response> {
     }
     let mut nodes = Vec::new();
     if let Some(n) = r.get("nodes").and_then(|x| x.as_bytes()) {
-        for c in n.chunks_exact(26) {
+        for c in n.as_chunks::<26>().0 {
             let id: [u8; 20] = c[..20].try_into().unwrap();
             let addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(c[20], c[21], c[22], c[23])), u16::from_be_bytes([c[24], c[25]]));
             if addr.port() != 0 {

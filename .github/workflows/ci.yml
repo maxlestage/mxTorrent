@@ -59,7 +59,10 @@ jobs:
           # Le client doit aussi trouver seul le tracker du serveur qui le sert.
           AUTO_TRACKER=1 node tests/e2e.cjs http://localhost:8000
       - name: Transmission
-        run: sudo apt-get update -q && sudo apt-get install -y -q transmission-daemon transmission-cli
+        # Le paquet démarre un service système (protégé par mot de passe) : on l'arrête.
+        run: |
+          sudo apt-get update -q && sudo apt-get install -y -q transmission-daemon transmission-cli
+          sudo systemctl stop transmission-daemon || true
       - name: Réseau BitTorrent classique (Transmission, trackers UDP et HTTP, passerelle chiffrée)
         run: |
           MXT_RELAY_ALLOW_PRIVATE=1 PORT=8001 bin/mxtorrent-tracker --static dist &
