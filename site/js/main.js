@@ -188,7 +188,7 @@ if (fine && !reduced) {
     b.addEventListener("pointerleave", () => { b.style.transform = ""; });
   });
   const glow = $(".cursor-glow");
-  addEventListener("pointermove", (e) => { glow.style.transform = `translate(${e.clientX}px, ${e.clientY}px)`; }, { passive: true });
+  addEventListener("pointermove", (e) => { glow.style.setProperty("--gx", `${e.clientX}px`); glow.style.setProperty("--gy", `${e.clientY}px`); }, { passive: true });
 }
 
 // Appareils de l'aperçu : parallaxe au défilement et au pointeur.

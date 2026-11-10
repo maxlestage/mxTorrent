@@ -41,6 +41,13 @@ body {
 @supports (overflow: clip) {
   html, body { overflow-x: clip; }
 }
+/* Safari (iPhone) zoome sur tout champ dont le texte fait moins de 16 px, et la page
+   zoomée glisse ensuite de côté : aucun champ sous 16 px. */
+input, textarea, select { font-size: max(16px, 1em); }
+/* Safari antérieur à 16 ne connaît pas « clip » : on coupe au niveau de la page. */
+@supports not (overflow: clip) {
+  html { overflow-x: hidden; }
+}
 /* Pas de rebond ni de glissement horizontal (pavé tactile, balayage au doigt). */
 html, body { overscroll-behavior-x: none; }
 main { max-width: 100%; }
@@ -174,7 +181,7 @@ p { margin: 0; }
   transition: border-color .3s, box-shadow .3s;
 }
 .magnet-form:focus-within { border-color: var(--violet); box-shadow: 0 0 0 6px color-mix(in srgb, var(--violet) 20%, transparent); }
-.magnet-form input { flex: 1; min-width: 0; height: 44px; background: transparent; border: 0; color: var(--text); font: 15px var(--body); outline: none; }
+.magnet-form input { flex: 1; min-width: 0; height: 44px; background: transparent; border: 0; color: var(--text); font: 16px var(--body); outline: none; }
 .magnet-form .btn { --h: 44px; padding: 0 16px; }
 .magnet-form .btn span:first-child { display: none; }
 .magnet-icon { font-size: 18px; }
@@ -331,7 +338,7 @@ p { margin: 0; }
 .pulse { width: 8px; height: 8px; border-radius: 50%; background: var(--green); animation: ping 2s infinite; box-shadow: 0 0 0 0 var(--green); }
 .pulse.off { background: var(--amber); }
 .footer-magnet { display: flex; gap: 6px; margin-top: 18px; max-width: 380px; padding: 4px 4px 4px 14px; border-radius: 999px; border: 1px solid var(--border); background: var(--surface); }
-.footer-magnet input { flex: 1; min-width: 0; background: transparent; border: 0; color: var(--text); font: 14px var(--body); outline: none; }
+.footer-magnet input { flex: 1; min-width: 0; background: transparent; border: 0; color: var(--text); font: 16px var(--body); outline: none; }
 .footer-cols { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 30px 20px; }
 .footer-top > *, .footer-middle > *, .footer-cols > *, .security-grid > * { min-width: 0; }
 .footer-col h3, .footer-middle h3 { font-size: 13px; letter-spacing: .12em; text-transform: uppercase; color: var(--text); margin-bottom: 14px; }
@@ -405,7 +412,7 @@ kbd { display: inline-block; min-width: 26px; padding: 2px 7px; border-radius: 6
 
 /* Curseur lumineux : seulement avec une souris. */
 @media (hover: hover) and (pointer: fine) {
-  .cursor-glow { display: block; position: fixed; left: 0; top: 0; z-index: 1; width: 500px; height: 500px; margin: -250px 0 0 -250px; border-radius: 50%; pointer-events: none; background: radial-gradient(circle, color-mix(in srgb, var(--violet) 14%, transparent), transparent 65%); transition: opacity .3s; mix-blend-mode: screen; }
+  .cursor-glow { display: block; position: fixed; inset: 0; z-index: 1; pointer-events: none; background: radial-gradient(250px circle at var(--gx, -500px) var(--gy, -500px), color-mix(in srgb, var(--violet) 14%, transparent), transparent 65%); mix-blend-mode: screen; }
 }
 
 /* Moins de mouvement si l'utilisateur le demande. */
