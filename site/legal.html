@@ -27,6 +27,7 @@
     .legal a:not(.btn) { color: var(--cyan); }
     .legal ul { padding-left: 20px; display: grid; gap: 6px; }
     .legal section:target { border-color: var(--violet); box-shadow: 0 0 0 6px color-mix(in srgb, var(--violet) 15%, transparent); }
+    @media (max-width: 479px) { .legal { padding-top: calc(150px + env(safe-area-inset-top)); } }
     .legal pre { white-space: pre-wrap; font-size: 13px; color: var(--muted); background: var(--bg2); padding: 16px; border-radius: 12px; border: 1px solid var(--border); }
   </style>
 </head>

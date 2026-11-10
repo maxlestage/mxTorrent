@@ -49,11 +49,12 @@ jobs:
       - run: npx playwright install --with-deps chromium
       - name: Construction, comme sur Heroku (heroku-build.sh)
         run: ./heroku-build.sh
-      - name: Échange d'un fichier entre deux navigateurs
+      - name: Aucun défilement horizontal (320 à 1920 px), puis échange d'un fichier entre deux navigateurs
         run: |
           # La commande du Procfile, avec le port fourni comme le fait Heroku.
           PORT=8000 bin/mxtorrent-tracker --static dist &
           sleep 1
+          node tests/layout.cjs http://localhost:8000
           node tests/e2e.cjs http://localhost:8000
           # Le client doit aussi trouver seul le tracker du serveur qui le sert.
           AUTO_TRACKER=1 node tests/e2e.cjs http://localhost:8000

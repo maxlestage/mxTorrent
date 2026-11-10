@@ -6,6 +6,7 @@
     "build": "./scripts/build.sh",
     "serve": "cargo run -p mxtorrent-tracker -- --static dist",
     "e2e": "node tests/e2e.cjs",
+    "layout": "node tests/layout.cjs",
     "assets": "node scripts/assets.cjs"
   },
   "devDependencies": {

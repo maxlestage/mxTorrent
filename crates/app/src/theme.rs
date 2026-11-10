@@ -1,6 +1,6 @@
 //! Couleurs et style : les mêmes que le site (violet électrique vers cyan).
 
-use egui::{Color32, CornerRadius, FontFamily, FontId, Margin, Shadow, Stroke, TextStyle, Vec2, Visuals};
+use egui::{Color32, CornerRadius, FontFamily, FontId, Margin, Shadow, Stroke, TextStyle, TextWrapMode, Vec2, Visuals};
 
 pub const VIOLET: Color32 = Color32::from_rgb(139, 92, 246);
 pub const CYAN: Color32 = Color32::from_rgb(34, 211, 238);
@@ -94,6 +94,8 @@ pub fn apply(ctx: &egui::Context, dark: bool, mobile: bool) {
         s.spacing.interact_size = Vec2::new(40.0, if mobile { 40.0 } else { 28.0 });
         s.spacing.window_margin = Margin::same(18);
         s.spacing.scroll.floating = true;
+        // Les textes reviennent à la ligne au lieu d'élargir la mise en page.
+        s.wrap_mode = Some(TextWrapMode::Wrap);
     });
 }
 

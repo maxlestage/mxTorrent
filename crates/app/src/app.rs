@@ -214,7 +214,8 @@ impl MxApp {
             ui,
             |ui| {
                 let e = self.engine.borrow();
-                ui.horizontal(|ui| {
+                // Passe à la ligne sur petit écran : rien n'est coupé par le bord.
+                ui.horizontal_wrapped(|ui| {
                     ui.spacing_mut().item_spacing.x = 14.0;
                     let n = e.connected_trackers();
                     let dot = if n > 0 { GREEN } else { AMBER };
@@ -227,6 +228,10 @@ impl MxApp {
                         &format!("{} {}", tr("pairs :", "peers:"), e.entries.iter().map(|x| x.torrent.peer_count()).sum::<usize>()),
                         p,
                     );
+                    // Les liens et la version vont sur la ligne suivante s'il ne reste pas la place.
+                    if ui.available_width() < 170.0 {
+                        ui.end_row();
+                    }
                     ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
                         if ui.link(RichText::new(tr("À propos", "About")).small()).clicked() {
                             self.about_open = true;
@@ -245,7 +250,7 @@ impl MxApp {
 
     fn list(&mut self, ui: &mut egui::Ui) {
         let p = self.palette();
-        ui.horizontal(|ui| {
+        ui.horizontal_wrapped(|ui| {
             for (f, fr, en) in [
                 (Filter::All, "Tous", "All"),
                 (Filter::Active, "Actifs", "Active"),
@@ -302,7 +307,8 @@ impl MxApp {
         ui.vertical_centered(|ui| {
             ui.add_space(30.0);
             let t = ui.input(|i| i.time) as f32;
-            let (r, _) = ui.allocate_exact_size(Vec2::splat(140.0), Sense::hover());
+            let s = ui.available_width().min(140.0);
+            let (r, _) = ui.allocate_exact_size(Vec2::splat(s), Sense::hover());
             logo(ui.painter(), r, t);
             ui.add_space(12.0);
             ui.label(RichText::new(tr("Aucun torrent pour l'instant", "No torrents yet")).heading().strong());
@@ -398,7 +404,7 @@ impl MxApp {
         });
         ui.add_space(6.0);
 
-        ui.horizontal(|ui| {
+        ui.horizontal_wrapped(|ui| {
             for (tab, fr, en) in [
                 (Tab::Overview, "Aperçu", "Overview"),
                 (Tab::Files, "Fichiers", "Files"),
@@ -435,7 +441,7 @@ impl MxApp {
                                 if ui.checkbox(&mut w, "").on_hover_text(tr("Télécharger ce fichier", "Download this file")).changed() {
                                     file_toggle = Some((fi, w));
                                 }
-                                ui.add(egui::Label::new(RichText::new(f.path[1.min(f.path.len() - 1)..].join("/")).strong()).truncate());
+                                ui.add(egui::Label::new(RichText::new(f.path[1.min(f.path.len() - 1)..].join("/")).strong()).wrap());
                             });
                             let prog = t.file_progress(fi);
                             progress_bar(ui, prog, if prog >= 1.0 { State::Seeding } else { State::Downloading }, 6.0, 0.0);
@@ -471,7 +477,11 @@ impl MxApp {
                     egui::Frame::new().fill(p.surface).corner_radius(CornerRadius::same(12)).inner_margin(10).show(ui, |ui| {
                         ui.set_width(ui.available_width().max(1.0));
                         ui.horizontal(|ui| {
-                            ui.label(RichText::new(&peer.client).strong());
+                            let w = (ui.available_width() - 56.0).max(40.0);
+                            ui.scope(|ui| {
+                                ui.set_max_width(w);
+                                ui.add(egui::Label::new(RichText::new(&peer.client).strong()).truncate());
+                            });
                             ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
                                 small(ui, &format!("{:.0} %", peer.progress * 100.0), p);
                             });
@@ -501,7 +511,7 @@ impl MxApp {
                             let c = if e.tracker_connected(url) { GREEN } else { AMBER };
                             let (r, _) = ui.allocate_exact_size(Vec2::splat(10.0), Sense::hover());
                             ui.painter().circle_filled(r.center(), 4.5, c);
-                            ui.add(egui::Label::new(RichText::new(url).monospace()).truncate());
+                            ui.add(egui::Label::new(RichText::new(url).monospace()).wrap());
                         });
                         let s = st.seeders.map(|x| x.to_string()).unwrap_or("–".into());
                         let l = st.leechers.map(|x| x.to_string()).unwrap_or("–".into());
@@ -668,7 +678,7 @@ impl MxApp {
             });
             ui.add_space(6.0);
             let mut m = magnet.clone();
-            ui.add(egui::TextEdit::singleline(&mut m).desired_width(f32::INFINITY).font(egui::TextStyle::Monospace));
+            ui.add(egui::TextEdit::multiline(&mut m).desired_rows(2).desired_width(f32::INFINITY).font(egui::TextStyle::Monospace));
             ui.horizontal_wrapped(|ui| {
                 if ui
                     .add(egui::Button::new(RichText::new(tr("🔗 Copier le lien", "🔗 Copy link")).color(Color32::WHITE)).fill(VIOLET))
@@ -722,7 +732,7 @@ impl MxApp {
                 ))
                 .small(),
             );
-            ui.horizontal(|ui| {
+            ui.horizontal_wrapped(|ui| {
                 if ui.add(egui::Button::new(RichText::new(tr("Retirer", "Remove")).color(Color32::WHITE)).fill(RED)).clicked() {
                     self.engine.borrow_mut().remove(&h);
                     if self.selected == Some(h) {
@@ -752,7 +762,7 @@ impl MxApp {
             ui.label(RichText::new(tr("Réglages", "Settings")).heading().strong());
             ui.add_space(6.0);
             egui::ScrollArea::vertical().max_height(ui.ctx().content_rect().height() * 0.65).show(ui, |ui| {
-                ui.horizontal(|ui| {
+                ui.horizontal_wrapped(|ui| {
                     ui.label(tr("Langue", "Language"));
                     let mut en = is_english();
                     if ui.selectable_label(!en, "Français").clicked() {
@@ -763,7 +773,7 @@ impl MxApp {
                     }
                     set_english(en);
                 });
-                ui.horizontal(|ui| {
+                ui.horizontal_wrapped(|ui| {
                     ui.label(tr("Thème", "Theme"));
                     if ui.selectable_label(self.dark, tr("🌙 Sombre", "🌙 Dark")).clicked() {
                         self.dark = true;
@@ -774,6 +784,7 @@ impl MxApp {
                 });
                 let Some(d) = &mut self.settings_draft else { return };
                 ui.separator();
+                ui.spacing_mut().slider_width = (ui.available_width() * 0.4).clamp(60.0, 180.0);
                 ui.add(egui::Slider::new(&mut d.max_peers, 5..=100).text(tr("pairs maximum par torrent", "max peers per torrent")));
                 ui.add(
                     egui::Slider::new(&mut d.offers_per_announce, 1..=10)
@@ -788,14 +799,15 @@ impl MxApp {
                         if ui.small_button("✖").clicked() {
                             remove = Some(i);
                         }
-                        ui.label(RichText::new(t).monospace().small());
+                        ui.add(egui::Label::new(RichText::new(t).monospace().small()).wrap());
                     });
                 }
                 if let Some(i) = remove {
                     d.trackers.remove(i);
                 }
                 ui.horizontal(|ui| {
-                    ui.add(egui::TextEdit::singleline(&mut self.new_tracker).hint_text("wss://…").desired_width(260.0));
+                    let w = (ui.available_width() - 90.0).clamp(80.0, 260.0);
+                    ui.add(egui::TextEdit::singleline(&mut self.new_tracker).hint_text("wss://…").desired_width(w));
                     let ok = self.new_tracker.starts_with("wss://") || self.new_tracker.starts_with("ws://");
                     if ui.add_enabled(ok, egui::Button::new(tr("Ajouter", "Add"))).clicked() {
                         d.trackers.push(self.new_tracker.trim().to_string());
@@ -838,7 +850,7 @@ impl MxApp {
                 );
             });
             ui.add_space(6.0);
-            ui.horizontal(|ui| {
+            ui.horizontal_wrapped(|ui| {
                 if ui.add(egui::Button::new(RichText::new(tr("Enregistrer", "Save")).color(Color32::WHITE)).fill(VIOLET)).clicked() {
                     apply = true;
                     close = true;
@@ -923,7 +935,8 @@ impl MxApp {
             return;
         }
         let mut open = true;
-        egui::Window::new(tr("Journal", "Log")).open(&mut open).default_size([420.0, 300.0]).show(ctx, |ui| {
+        let w = (ctx.content_rect().width() - 24.0).clamp(160.0, 420.0);
+        egui::Window::new(tr("Journal", "Log")).open(&mut open).default_size([w, 300.0]).max_width(w).show(ctx, |ui| {
             egui::ScrollArea::vertical().stick_to_bottom(true).show(ui, |ui| {
                 for l in &self.engine.borrow().log {
                     ui.label(RichText::new(l).monospace().small());
@@ -945,6 +958,7 @@ impl MxApp {
             .order(egui::Order::Foreground)
             .interactable(false)
             .show(ctx, |ui| {
+                ui.set_max_width((ui.ctx().content_rect().width() - 32.0).max(120.0));
                 for t in toasts {
                     let age = now.saturating_sub(t.at) as f32 / 1000.0;
                     let alpha = (1.0 - ((age - 4.0).max(0.0))).clamp(0.0, 1.0) * (age * 6.0).min(1.0);
@@ -971,16 +985,16 @@ impl MxApp {
         let painter = ctx.layer_painter(egui::LayerId::new(egui::Order::Foreground, Id::unique("drop")));
         painter.rect_filled(rect, 0.0, Color32::from_black_alpha(180));
         painter.rect_stroke(rect.shrink(16.0), CornerRadius::same(24), Stroke::new(3.0, VIOLET), egui::StrokeKind::Inside);
-        painter.text(
-            rect.center(),
-            Align2::CENTER_CENTER,
+        let galley = painter.layout(
             tr(
                 "Déposez des .torrent pour les ouvrir, ou des fichiers pour les partager",
                 "Drop .torrent files to open them, or any files to share them",
             ),
             egui::FontId::proportional(20.0),
             Color32::WHITE,
+            (rect.width() - 64.0).max(80.0),
         );
+        painter.galley(rect.center() - galley.size() / 2.0, galley, Color32::WHITE);
     }
 
     fn fab(&mut self, ctx: &egui::Context) {
@@ -1032,10 +1046,11 @@ impl eframe::App for MxApp {
                 None => self.list(ui),
             });
         } else {
+            let max_list = (ctx.content_rect().width() * 0.55).clamp(300.0, 600.0);
             egui::Panel::left("list")
                 .resizable(true)
-                .default_size(400.0)
-                .size_range(300.0..=600.0)
+                .default_size(max_list.min(400.0))
+                .size_range(300.0..=max_list)
                 .frame(egui::Frame::new().fill(p.bg).inner_margin(egui::Margin::symmetric(14, 8)))
                 .show(ui, |ui| self.list(ui));
             egui::CentralPanel::default().frame(central).show(ui, |ui| match self.selected {
@@ -1285,7 +1300,8 @@ fn overview(ui: &mut egui::Ui, entry: &crate::engine::Entry, p: Palette) {
         );
         piece_map(ui, t, p);
         ui.add_space(8.0);
-        egui::Grid::new("meta").num_columns(2).spacing([12.0, 4.0]).show(ui, |ui| {
+        let value_w = (ui.available_width() - 140.0).max(80.0);
+        egui::Grid::new("meta").num_columns(2).spacing([12.0, 4.0]).max_col_width(value_w).show(ui, |ui| {
             ui.label(RichText::new(tr("Empreinte", "Info hash")).color(p.muted));
             ui.label(RichText::new(t.info_hash().to_hex()).monospace().small());
             ui.end_row();
@@ -1357,7 +1373,8 @@ fn hero(ui: &mut egui::Ui, p: Palette) {
     ui.vertical_centered(|ui| {
         ui.add_space(ui.available_height() * 0.12);
         let t = ui.input(|i| i.time) as f32;
-        let (r, _) = ui.allocate_exact_size(Vec2::splat(220.0), Sense::hover());
+        let s = ui.available_width().min(220.0);
+        let (r, _) = ui.allocate_exact_size(Vec2::splat(s), Sense::hover());
         logo(ui.painter(), r, t);
         ui.add_space(16.0);
         ui.label(RichText::new(tr("Le torrent, directement dans le navigateur", "Torrents, right in your browser")).size(28.0).strong());
