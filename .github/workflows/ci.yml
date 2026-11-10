@@ -58,6 +58,8 @@ jobs:
           node tests/e2e.cjs http://localhost:8000
           # Le client doit aussi trouver seul le tracker du serveur qui le sert.
           AUTO_TRACKER=1 node tests/e2e.cjs http://localhost:8000
+      - name: Mise à jour sans copie périmée (service worker)
+        run: tests/update.sh 8002
       - name: Transmission
         # Le paquet démarre un service système (protégé par mot de passe) : on l'arrête.
         run: |

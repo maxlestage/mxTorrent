@@ -15,8 +15,9 @@
   <link rel="manifest" href="../manifest.webmanifest">
   <link rel="icon" href="../assets/icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="../assets/icon-192.png">
-  <link rel="modulepreload" href="./pkg/mxtorrent_app.js">
-  <link rel="preload" href="./pkg/mxtorrent_app_bg.wasm" as="fetch" type="application/wasm" crossorigin>
+  <!-- Les fichiers de l'application portent leur version : jamais d'ancienne copie servie par erreur. -->
+  <link rel="modulepreload" href="./pkg/mxtorrent_app.js?v=__BUILD__">
+  <link rel="preload" href="./pkg/mxtorrent_app_bg.wasm?v=__BUILD__" as="fetch" type="application/wasm" crossorigin>
   <style>
     /* Application plein écran : la page elle-même ne bouge jamais, ni en largeur ni en hauteur (iPhone compris). */
     html, body { position: fixed; inset: 0; width: 100%; margin: 0; padding: 0; height: 100%; overflow: hidden; overscroll-behavior: none; touch-action: none; background: #07070d; color: #ececfa; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
@@ -50,7 +51,8 @@
   </div>
   <noscript>mxTorrent a besoin de JavaScript et de WebAssembly.</noscript>
   <script type="module">
-    import init, { WebHandle } from "./pkg/mxtorrent_app.js";
+    import init, { WebHandle } from "./pkg/mxtorrent_app.js?v=__BUILD__";
+    window.mxtorrentBuild = "__BUILD__";
     const boot = document.getElementById("boot");
     const msg = document.getElementById("boot-msg");
     const fail = (text) => { msg.textContent = text; msg.className = "err"; };
@@ -58,7 +60,7 @@
       fail("Ce navigateur ne connaît pas WebRTC : mxTorrent ne peut pas s'y connecter à des pairs.");
     }
     try {
-      await init();
+      await init({ module_or_path: "./pkg/mxtorrent_app_bg.wasm?v=__BUILD__" });
       const handle = new WebHandle();
       window.mxtorrent = handle;
       await handle.start(document.getElementById("mx"));
@@ -100,7 +102,21 @@
       fail("Impossible de démarrer : " + e + ". Il faut un navigateur récent avec WebAssembly et WebGL.");
     }
     if ("serviceWorker" in navigator) {
-      navigator.serviceWorker.register("../sw.js", { scope: "../" }).catch(() => {});
+      // Une nouvelle version vient de prendre la main : on recharge, sauf si un torrent est en cours.
+      const hadController = !!navigator.serviceWorker.controller;
+      navigator.serviceWorker.addEventListener("controllerchange", () => {
+        if (!hadController) return;
+        let busy = false;
+        try { busy = JSON.parse(window.mxtorrent?.status() || "{}").torrents?.length > 0; } catch {}
+        if (!busy) location.reload();
+      });
+      navigator.serviceWorker
+        .register("../sw.js", { scope: "../", updateViaCache: "none" })
+        .then((reg) => {
+          // Application installée : elle ne se « recharge » jamais vraiment, on vérifie à chaque retour.
+          document.addEventListener("visibilitychange", () => { if (!document.hidden) reg.update().catch(() => {}); });
+        })
+        .catch(() => {});
     }
   </script>
 </body>

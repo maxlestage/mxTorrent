@@ -52,7 +52,8 @@ fi
 
 # Version du cache hors ligne : change à chaque construction.
 VERSION="$(git rev-parse --short HEAD 2>/dev/null || date +%s)-$(date +%s)"
-sed -i "s/__BUILD__/$VERSION/" "$OUT/sw.js"
+# Le même numéro dans le service worker et dans les adresses des fichiers des pages.
+sed -i "s/__BUILD__/$VERSION/g" "$OUT/sw.js" "$OUT/index.html" "$OUT/legal.html" "$OUT/app/index.html"
 
 du -sh "$OUT/app/pkg/mxtorrent_app_bg.wasm" | awk '{print "module wasm : " $1}'
 echo "prêt : $OUT/  (cargo run -p mxtorrent-tracker -- --static $OUT)"

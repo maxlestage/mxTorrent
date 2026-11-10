@@ -1,7 +1,14 @@
 // mxTorrent — service worker : hors ligne, partage Android, liens magnet.
+//
+// Règle d'or : ne jamais servir une ancienne version quand le réseau répond.
+// - Pages, scripts, styles : le réseau d'abord (une revalidation rapide), le cache
+//   seulement hors ligne.
+// - Fichiers versionnés (`?v=…`, le module WebAssembly et sa colle) et images :
+//   le cache d'abord — leur adresse change à chaque version, ils ne périment pas.
+// - À chaque nouvelle version, tous les anciens caches sont supprimés.
 const VERSION = "__BUILD__";
 const CORE = `mx-core-${VERSION}`;
-const RUNTIME = "mx-runtime";
+const RUNTIME = `mx-runtime-${VERSION}`;
 const SHARE = "mx-share";
 
 const PRECACHE = [
@@ -18,23 +25,25 @@ const PRECACHE = [
   "assets/icon.svg",
   "assets/icon-192.png",
   "assets/icon-512.png",
-  "assets/screens/desktop.png",
-  "assets/screens/phone.png",
   "app/",
-  "app/pkg/mxtorrent_app.js",
-  "app/pkg/mxtorrent_app_bg.wasm",
+  `app/pkg/mxtorrent_app.js?v=${VERSION}`,
+  `app/pkg/mxtorrent_app_bg.wasm?v=${VERSION}`,
 ];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
-    caches.open(CORE).then((c) => c.addAll(PRECACHE)).then(() => self.skipWaiting()),
+    caches
+      .open(CORE)
+      .then((c) => c.addAll(PRECACHE.map((u) => new Request(u, { cache: "reload" }))))
+      .then(() => self.skipWaiting()),
   );
 });
 
 self.addEventListener("activate", (event) => {
   event.waitUntil(
-    caches.keys()
-      .then((keys) => Promise.all(keys.filter((k) => k.startsWith("mx-core-") && k !== CORE).map((k) => caches.delete(k))))
+    caches
+      .keys()
+      .then((keys) => Promise.all(keys.filter((k) => k !== CORE && k !== RUNTIME && k !== SHARE).map((k) => caches.delete(k))))
       .then(() => self.clients.claim()),
   );
 });
@@ -57,6 +66,36 @@ async function handleShare(request) {
   return Response.redirect(base.href, 303);
 }
 
+async function fromCaches(req, opts) {
+  for (const name of [CORE, RUNTIME]) {
+    const hit = await (await caches.open(name)).match(req, opts);
+    if (hit) return hit;
+  }
+  return undefined;
+}
+
+async function cacheFirst(req) {
+  const hit = await fromCaches(req);
+  if (hit) return hit;
+  const res = await fetch(req);
+  if (res.ok) (await caches.open(RUNTIME)).put(req, res.clone());
+  return res;
+}
+
+async function networkFirst(req, fallback) {
+  try {
+    // « no-cache » : le navigateur revalide auprès du serveur (304 si rien n'a changé).
+    const res = await fetch(req, { cache: "no-cache" });
+    if (res.ok) (await caches.open(RUNTIME)).put(req, res.clone());
+    return res;
+  } catch (e) {
+    const hit = (await fromCaches(req)) || (await fromCaches(req, { ignoreSearch: true }));
+    if (hit) return hit;
+    if (fallback) return (await fromCaches(fallback)) || Response.error();
+    throw e;
+  }
+}
+
 self.addEventListener("fetch", (event) => {
   const req = event.request;
   const url = new URL(req.url);
@@ -67,48 +106,19 @@ self.addEventListener("fetch", (event) => {
   }
   if (req.method !== "GET") return;
 
-  // Polices Google : cache d'abord.
+  // Polices Google : elles ne changent pas.
   if (url.origin === "https://fonts.googleapis.com" || url.origin === "https://fonts.gstatic.com") {
-    event.respondWith(
-      caches.open(RUNTIME).then(async (c) => {
-        const hit = await c.match(req);
-        if (hit) return hit;
-        const res = await fetch(req);
-        if (res.ok || res.type === "opaque") c.put(req, res.clone());
-        return res;
-      }),
-    );
+    event.respondWith(cacheFirst(req));
     return;
   }
   if (url.origin !== self.location.origin) return;
+  // Le tracker et la passerelle ne passent jamais par le cache.
+  if (url.pathname.endsWith("/announce") || url.pathname.includes("/relay")) return;
 
-  // Pages : le réseau d'abord, le cache sinon, puis la page hors ligne.
   if (req.mode === "navigate") {
-    event.respondWith(
-      fetch(req)
-        .then((res) => {
-          const copy = res.clone();
-          caches.open(RUNTIME).then((c) => c.put(req, copy));
-          return res;
-        })
-        .catch(async () => (await caches.match(req, { ignoreSearch: true })) || (await caches.match("offline.html"))),
-    );
+    event.respondWith(networkFirst(req, "offline.html"));
     return;
   }
-
-  // Le reste : réponse immédiate depuis le cache, mise à jour en arrière-plan.
-  event.respondWith(
-    caches.match(req).then((hit) => {
-      const net = fetch(req)
-        .then((res) => {
-          if (res.ok) {
-            const copy = res.clone();
-            caches.open(RUNTIME).then((c) => c.put(req, copy));
-          }
-          return res;
-        })
-        .catch(() => hit);
-      return hit || net;
-    }),
-  );
+  const immutable = url.searchParams.has("v") || /\/(assets|vendor)\//.test(url.pathname) || /\.(png|jpe?g|svg|webp|woff2?|ttf)$/.test(url.pathname);
+  event.respondWith(immutable ? cacheFirst(req) : networkFirst(req));
 });
