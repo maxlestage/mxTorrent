@@ -41,6 +41,8 @@ body {
 @supports (overflow: clip) {
   html, body { overflow-x: clip; }
 }
+/* Pas de rebond ni de glissement horizontal (pavé tactile, balayage au doigt). */
+html, body { overscroll-behavior-x: none; }
 main { max-width: 100%; }
 @supports (overflow: clip) {
   main { overflow-x: clip; }
