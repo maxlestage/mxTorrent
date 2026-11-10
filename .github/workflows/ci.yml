@@ -63,6 +63,8 @@ jobs:
         run: |
           sudo apt-get update -q && sudo apt-get install -y -q transmission-daemon transmission-cli
           sudo systemctl stop transmission-daemon || true
+          # Le profil AppArmor d'Ubuntu interdit à Transmission de lire une configuration hors de ses dossiers.
+          sudo apparmor_parser -R /etc/apparmor.d/transmission || true
       - name: Réseau BitTorrent classique (Transmission, trackers UDP et HTTP, passerelle chiffrée)
         run: |
           MXT_RELAY_ALLOW_PRIVATE=1 PORT=8001 bin/mxtorrent-tracker --static dist &
