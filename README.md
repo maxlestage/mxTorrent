@@ -26,7 +26,8 @@ Rien à installer : il tourne dans un onglet, sur ordinateur comme sur télépho
 | 🧩 **Le vrai protocole** | Poignée de main, champs de bits, pièce la plus rare d'abord, demandes en file, fin de partie, vérification SHA-1, envoi aux autres pairs. |
 | 🌐 **Sources web** | Les torrents avec des sources HTTP (BEP 19) se téléchargent même sans pair. |
 | 🎬 **Fichiers** | Choix des fichiers à télécharger, aperçu (vidéo, audio, image, PDF, texte) et enregistrement dès qu'ils sont complets. |
-| 🌍 **Compatible WebTorrent** | Mêmes trackers et même protocole que webtorrent.io, Instant.io, WebTorrent Desktop. |
+| 🌍 **Tout le réseau BitTorrent** | Les navigateurs en direct (WebRTC, compatible WebTorrent) et, par la [passerelle](#la-passerelle-tcpudp-chiffrée-par-brocolis-), les trackers UDP et HTTP, la DHT et les pairs TCP (qBittorrent, Transmission, µTorrent…). |
+| 🥦 **Chiffré par Brocolis** | Entre le navigateur et la passerelle : session [Brocolis](https://github.com/maxlestage/brocolis) v4, X25519 + ML-KEM-768 (résistant aux ordinateurs quantiques). Vers les pairs : DTLS (WebRTC) ou MSE (TCP). |
 | 📲 **PWA** | Installable, fonctionne hors ligne, ouvre les liens `magnet:` et les fichiers `.torrent`, reçoit les fichiers partagés depuis Android. |
 | 🇫🇷 🇬🇧 | Interface en français et en anglais, thème sombre ou clair, mise en page ordinateur et téléphone. |
 
@@ -60,6 +61,42 @@ par des essaims entiers simulés en mémoire, et de le brancher sur WebRTC dans 
 `fetch`) dépose un événement dans une file que le moteur vide quand il a la main : pas de
 réentrance, pas de verrou. Une horloge fait avancer les sessions même quand l'onglet est en arrière-plan.
 
+## La passerelle TCP/UDP, chiffrée par Brocolis 🥦
+
+Un navigateur n'a pas le droit d'ouvrir de connexion TCP ni de socket UDP : seul, il ne joint que les
+pairs WebRTC. `mxtorrent-tracker` contient donc aussi une **passerelle** (`/relay`) qui fait le reste
+pour lui :
+
+```
+navigateur ══ WebSocket TLS ══╗                     ┌── trackers UDP (BEP 15) et HTTP
+   session Brocolis v4 🥦     ╠══ passerelle ───────┼── DHT (BEP 5)
+   (X25519 + ML-KEM-768,      ║   (mxtorrent-tracker)└── pairs TCP, chiffrés MSE/RC4
+    triple cliquet)        ═══╝
+```
+
+- **Navigateur ↔ passerelle** : chaque message est une session [Brocolis](https://github.com/maxlestage/brocolis)
+  v4 (`brocolis-proto`) : identité éphémère par onglet, établissement hybride X25519 + ML-KEM-768,
+  triple cliquet, en-têtes chiffrés. Le paquet de clés de la passerelle est lu en HTTPS
+  (`/relay/bundle`) ; son empreinte est affichée dans les réglages.
+- **Passerelle ↔ pairs** : MSE/PE (Diffie-Hellman 768 bits puis RC4), le chiffrement que comprennent
+  les clients classiques. Exigé par défaut ; `MXT_RELAY_ALLOW_PLAIN=1` accepte aussi les pairs en clair.
+- **Pas de mandataire ouvert** : la passerelle ne se connecte qu'aux pairs qu'elle a trouvés pour ce
+  torrent, jamais à une adresse privée (`MXT_RELAY_ALLOW_PRIVATE=1` pour les tests en local), et le
+  premier message envoyé doit être la poignée de main BitTorrent de ce torrent.
+
+**Ce que voit qui :** le réseau entre vous et la passerelle ne voit rien (même l'hébergeur qui
+termine TLS). Les pairs classiques voient l'adresse de la passerelle, pas la vôtre. La passerelle,
+elle, relaie le protocole BitTorrent : comme un tracker, elle sait quels torrents vous échangez.
+Hébergez la vôtre pour n'avoir à faire confiance qu'à vous.
+
+**Quelle passerelle ?** Le client servi par `mxtorrent-tracker` (Heroku, serveur perso) utilise
+celle de son serveur, automatiquement. Le client publié sur GitHub Pages utilise celle donnée par la
+variable du dépôt `MXT_GATEWAY_URL` (*Settings → Secrets and variables → Actions → Variables*, par
+exemple `https://mon-app.herokuapp.com/`). Elle se change aussi dans **Réglages → Passerelle TCP/UDP**.
+
+`tests/classic.sh` le vérifie avec un vrai client : Transmission partage un fichier annoncé sur un
+tracker UDP et un tracker HTTP, et un navigateur le télécharge par la passerelle.
+
 ## Démarrage rapide
 
 Il faut Rust (stable), la cible WebAssembly et `wasm-bindgen` :
@@ -81,6 +118,7 @@ Le même serveur est aussi un tracker : `ws://localhost:8000/announce`.
 ```sh
 cargo test -p mxtorrent-core -p mxtorrent-tracker -p mxtorrent-app   # unitaires + essaims simulés
 node tests/e2e.cjs http://localhost:8000                             # deux Chromium, un vrai échange WebRTC
+tests/classic.sh http://localhost:8000                               # Transmission + trackers UDP/HTTP + passerelle
 ```
 
 Le test de bout en bout ouvre deux navigateurs isolés : le premier partage un fichier, le second
@@ -140,13 +178,16 @@ Il suffit, une fois, d'aller dans **Settings → Pages** du dépôt et de choisi
 
 Soyons honnêtes sur les limites :
 
-- **Pairs WebRTC uniquement.** Un navigateur ne peut pas ouvrir de connexions TCP ou UDP brutes :
-  mxTorrent échange avec les clients WebTorrent (et les sources web), pas avec les pairs qui ne parlent
-  que TCP/UDP (qBittorrent, Transmission… sans WebRTC). Les trackers `udp://` et `http://` sont ignorés.
+- **Sans passerelle, pairs WebRTC uniquement.** Un navigateur ne peut pas ouvrir de connexions TCP
+  ou UDP : sans passerelle, mxTorrent n'échange qu'avec les clients WebTorrent (et les sources web).
+  La passerelle n'accepte pas de connexions entrantes (Heroku n'en laisse pas passer) : elle joint les
+  pairs qui acceptent des connexions TCP, pas ceux qui ne sont joignables qu'en uTP.
 - **Stockage en mémoire.** Les fichiers vivent dans la mémoire de l'onglet : quelques centaines de Mio
   partout, jusqu'à ~2 Gio sur ordinateur. Enregistrez-les une fois complets ; gardez l'onglet ouvert pour partager.
 - **Accessibilité.** egui dessine dans un canevas ; la prise en charge des lecteurs d'écran reste limitée.
 
 ## Licence
 
-[MIT](LICENSE) © Maxime Lestage. Partagez uniquement des contenus dont vous avez les droits.
+[MIT](LICENSE) © Maxime Lestage. `brocolis-proto` reste sous sa propre licence (dépôt
+[maxlestage/brocolis](https://github.com/maxlestage/brocolis)). Partagez uniquement des contenus dont
+vous avez les droits.

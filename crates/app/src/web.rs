@@ -208,11 +208,14 @@ pub fn detect_local_tracker() {
     let base = path.trim_end_matches('/').trim_end_matches("/app").trim_end_matches('/').to_string();
     let http = format!("{proto}//{host}{base}/announce");
     let ws = format!("{}//{host}{base}/announce", if proto == "https:" { "wss:" } else { "ws:" });
+    let gateway_base = format!("{proto}//{host}{base}/");
     wasm_bindgen_futures::spawn_local(async move {
         if let Ok((_, body)) = fetch_bytes(&http, None).await
             && body.starts_with(b"mxtorrent-tracker")
         {
             crate::net::push(crate::net::NetEvent::LocalTracker(ws));
+            // Le même serveur est aussi la passerelle TCP/UDP.
+            crate::net::push(crate::net::NetEvent::LocalGateway(gateway_base));
         }
     });
 }
@@ -249,4 +252,13 @@ pub fn store(key: &str, value: &str) {
     if let Some(s) = window().local_storage().ok().flatten() {
         let _ = s.set_item(key, value);
     }
+}
+
+/// La passerelle par défaut inscrite dans la page à la construction (`MXT_GATEWAY_URL`).
+pub fn configured_gateway() -> Option<String> {
+    let doc = window().document()?;
+    let el = doc.query_selector("meta[name=mxtorrent-gateway]").ok()??;
+    let v = el.get_attribute("content")?;
+    let v = v.trim();
+    (v.starts_with("https://") || v.starts_with("http://")).then(|| v.to_string())
 }

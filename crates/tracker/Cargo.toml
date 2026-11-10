@@ -9,8 +9,15 @@ license.workspace = true
 repository.workspace = true
 
 [dependencies]
+mxtorrent-core = { path = "../core" }
+# Le protocole Brocolis 🥦 (maxlestage/brocolis, sous sa propre licence), à une version figée.
+brocolis-proto = { git = "https://github.com/maxlestage/brocolis", rev = "8c7585e7451ed23d8a5905d23d5e91ce21e1292b" }
+base64 = "0.22"
+getrandom = "0.4"
+num-bigint = "0.4"
+reqwest = { version = "0.12", default-features = false, features = ["rustls-tls"] }
 axum = { version = "0.8", features = ["ws"] }
-tokio = { version = "1", features = ["rt-multi-thread", "macros", "sync", "net", "signal"] }
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "sync", "net", "signal", "time", "io-util"] }
 tower-http = { version = "0.6", features = ["fs", "set-header", "compression-gzip", "compression-br"] }
 serde_json = "1"
 tower = { version = "0.5", features = ["util"] }

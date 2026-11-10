@@ -15,6 +15,7 @@ pub mod bencode;
 pub mod bitfield;
 pub mod magnet;
 pub mod metainfo;
+pub mod relay;
 pub mod torrent;
 pub mod tracker;
 pub mod util;

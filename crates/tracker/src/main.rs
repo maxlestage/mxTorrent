@@ -10,6 +10,11 @@
 //! Le tracker répond sur `/announce` (et sur `/`, pour les clients qui
 //! n'ajoutent pas de chemin).
 
+mod dht;
+mod gateway;
+mod mse;
+mod trackers;
+
 use axum::Router;
 use axum::extract::ws::{Message, WebSocket, WebSocketUpgrade};
 use axum::extract::{FromRequestParts, State};
@@ -249,7 +254,36 @@ async fn main() {
         }
     }
     let tracker: Shared = Arc::new(Tracker::default());
-    let mut app = Router::new().route("/announce", get(announce));
+    // La passerelle TCP/UDP, chiffrée par Brocolis 🥦.
+    let gw = Arc::new(gateway::Gateway::new());
+    println!("passerelle TCP/UDP : /relay (Brocolis v4, empreinte {})", gw.fingerprint);
+    let gw_info = gw.clone();
+    let gw_ws = gw.clone();
+    let mut app = Router::new()
+        .route("/announce", get(announce))
+        .route(
+            "/relay/bundle",
+            get(move || {
+                let body = gw_info.info_json();
+                async move {
+                    (
+                        [
+                            (axum::http::header::CONTENT_TYPE, "application/json"),
+                            (axum::http::header::ACCESS_CONTROL_ALLOW_ORIGIN, "*"),
+                            (axum::http::header::CACHE_CONTROL, "no-store"),
+                        ],
+                        body,
+                    )
+                }
+            }),
+        )
+        .route(
+            "/relay",
+            get(move |ws: WebSocketUpgrade| {
+                let gw = gw_ws.clone();
+                async move { ws.max_message_size(1 << 20).on_upgrade(move |s| gateway::serve(s, gw)) }
+            }),
+        );
     app = match &static_dir {
         Some(dir) => {
             // `/` reste un tracker pour les clients WebSocket, et sert le site sinon.

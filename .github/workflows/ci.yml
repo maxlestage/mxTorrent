@@ -52,8 +52,16 @@ jobs:
       - name: Échange d'un fichier entre deux navigateurs
         run: |
           # La commande du Procfile, avec le port fourni comme le fait Heroku.
-          PORT=8000 bin/mxtorrent-tracker --static dist &
+          # Transmission tourne sur la même machine : la passerelle doit accepter l'adresse locale.
+          MXT_RELAY_ALLOW_PRIVATE=1 PORT=8000 bin/mxtorrent-tracker --static dist &
           sleep 1
           node tests/e2e.cjs http://localhost:8000
           # Le client doit aussi trouver seul le tracker du serveur qui le sert.
           AUTO_TRACKER=1 node tests/e2e.cjs http://localhost:8000
+      - name: Transmission
+        run: sudo apt-get update -q && sudo apt-get install -y -q transmission-daemon transmission-cli
+      - name: Réseau BitTorrent classique (Transmission, trackers UDP et HTTP, passerelle chiffrée)
+        run: |
+          MXT_RELAY_ALLOW_PRIVATE=1 PORT=8001 bin/mxtorrent-tracker --static dist &
+          sleep 1
+          tests/classic.sh http://localhost:8001

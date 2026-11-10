@@ -28,6 +28,9 @@ pub struct Settings {
     pub offers_per_announce: usize,
     pub use_web_seeds: bool,
     pub seed_after_download: bool,
+    /// Passerelle TCP/UDP : adresse d'un serveur mxtorrent-tracker (vide : celui qui sert l'application).
+    pub gateway: String,
+    pub use_gateway: bool,
 }
 
 impl Default for Settings {
@@ -39,6 +42,8 @@ impl Default for Settings {
             offers_per_announce: 5,
             use_web_seeds: true,
             seed_after_download: true,
+            gateway: String::new(),
+            use_gateway: true,
         }
     }
 }
@@ -152,6 +157,10 @@ pub struct Engine {
     /// Torrent créé à l'instant, à montrer dans la fenêtre de partage.
     pub just_created: Option<InfoHash>,
     pub dirty: bool,
+    /// La passerelle TCP/UDP chiffrée par Brocolis, si elle est utilisée.
+    pub(crate) gateway: Option<crate::gateway::GatewayClient>,
+    /// La passerelle du serveur qui sert l'application, si c'en est une.
+    pub(crate) auto_gateway: Option<String>,
 }
 
 const OFFER_TTL_MS: u64 = 50_000;
@@ -177,12 +186,18 @@ impl Engine {
             log: VecDeque::new(),
             just_created: None,
             dirty: false,
+            gateway: None,
+            auto_gateway: None,
         }
     }
 
     fn key(&mut self) -> PeerKey {
         self.next_key += 1;
         self.next_key
+    }
+
+    pub(crate) fn new_key(&mut self) -> PeerKey {
+        self.key()
     }
 
     pub fn toast(&mut self, text: impl Into<String>, good: bool) {
@@ -342,6 +357,7 @@ impl Engine {
     pub fn remove(&mut self, h: &InfoHash) {
         let Some(i) = self.find(h) else { return };
         self.announce_stop(i);
+        self.gateway_forget(h);
         let e = self.entries.remove(i);
         let keys: Vec<PeerKey> = self.conns.iter().filter(|(_, (ih, _))| ih == h).map(|(k, _)| *k).collect();
         for k in keys {
@@ -358,6 +374,7 @@ impl Engine {
         let Some(i) = self.find(h) else { return };
         if paused {
             self.announce_stop(i);
+            self.gateway_forget(h);
         }
         self.entries[i].torrent.set_paused(paused);
         if !paused {
@@ -401,6 +418,7 @@ impl Engine {
         }
         self.handle_core_events();
         self.flush();
+        self.gateway_flush();
     }
 
     /// Appelé quatre fois par seconde.
@@ -414,7 +432,9 @@ impl Engine {
         self.schedule_announces(now);
         self.expire_pending(now);
         self.run_web_seeds(now);
+        self.gateway_tick();
         self.flush();
+        self.gateway_flush();
         let before = self.toasts.len();
         self.toasts.retain(|t| now.saturating_sub(t.at) < 5_000);
         if self.toasts.len() != before {
@@ -536,6 +556,13 @@ impl Engine {
                 }
             }
             NetEvent::LocalTracker(url) => self.add_tracker_everywhere(url),
+            NetEvent::LocalGateway(base) => {
+                self.auto_gateway = Some(base);
+            }
+            NetEvent::GatewayInfo(r) => self.on_gateway_info(r),
+            NetEvent::GatewayOpen => self.on_gateway_open(),
+            NetEvent::GatewayData(b) => self.on_gateway_data(b),
+            NetEvent::GatewayClosed => self.on_gateway_closed(),
             NetEvent::Link(l) => {
                 if let Err(e) = self.add_link(&l) {
                     self.toast(e, false);
@@ -633,6 +660,12 @@ impl Engine {
             web::notify_title("mxTorrent ✓");
         }
         for k in closes {
+            if self.gateway_close(k) {
+                for e in &mut self.entries {
+                    e.torrent.remove_peer(k);
+                }
+                continue;
+            }
             if let Some((h, _conn)) = self.conns.remove(&k)
                 && let Some(i) = self.find(&h)
             {

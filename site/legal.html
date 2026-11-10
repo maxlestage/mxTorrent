@@ -76,7 +76,8 @@
       <h3>Ce qui est vu par d'autres</h3>
       <ul>
         <li><strong>Les trackers</strong> que vous utilisez voient votre adresse IP, l'empreinte des torrents auxquels vous participez et les offres de connexion WebRTC.</li>
-        <li><strong>Les pairs</strong> avec qui vous échangez voient votre adresse IP, comme dans tout réseau pair à pair.</li>
+        <li><strong>Les pairs WebRTC</strong> avec qui vous échangez voient votre adresse IP, comme dans tout réseau pair à pair. Les pairs du réseau classique (TCP) ne voient que l'adresse de la passerelle.</li>
+        <li><strong>La passerelle TCP/UDP</strong> (si elle est utilisée) voit votre adresse IP et les torrents que vous échangez, comme un tracker : elle relaie le protocole BitTorrent. Entre vous et elle, tout est chiffré par Brocolis 🥦 ; vers les pairs, par MSE.</li>
         <li><strong>Les serveurs STUN</strong> (par défaut ceux de Google et Twilio) voient votre adresse IP quand votre navigateur cherche à la découvrir. Vous pouvez les changer dans les réglages.</li>
         <li><strong>Les polices</strong> du site sont servies par Google Fonts.</li>
       </ul>
@@ -108,6 +109,8 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
         <li><a href="https://github.com/mitsuhiko/sha1-smol" rel="noopener">sha1_smol</a> — empreintes SHA-1 (BSD-3-Clause).</li>
         <li><a href="https://github.com/kennytm/qrcode-rust" rel="noopener">qrcode</a> — QR codes (MIT ou Apache-2.0).</li>
         <li><a href="https://github.com/serde-rs/json" rel="noopener">serde et serde_json</a> — JSON (MIT ou Apache-2.0).</li>
+        <li><a href="https://github.com/maxlestage/brocolis" rel="noopener">brocolis-proto</a> 🥦 — chiffrement de la passerelle (sous sa propre licence, propriété de son auteur).</li>
+        <li><a href="https://github.com/rustcrypto" rel="noopener">RustCrypto</a> (num-bigint, SHA-1) et <a href="https://github.com/seanmonstar/reqwest" rel="noopener">reqwest</a> — passerelle (MIT ou Apache-2.0).</li>
         <li><a href="https://threejs.org" rel="noopener">three.js</a> — 3D du site (MIT, <a href="vendor/three.LICENSE.txt">licence</a>).</li>
         <li><a href="https://github.com/tokio-rs/axum" rel="noopener">axum et tokio</a> — tracker (MIT).</li>
         <li>Polices <a href="https://fonts.google.com/specimen/Space+Grotesk" rel="noopener">Space Grotesk</a> et <a href="https://fonts.google.com/specimen/Inter" rel="noopener">Inter</a> (SIL Open Font License).</li>

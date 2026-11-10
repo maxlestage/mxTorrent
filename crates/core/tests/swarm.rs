@@ -209,3 +209,47 @@ fn pair_menteur_detecte() {
     // On construit un "faux" partageur en trichant sur sa mémoire : seed() refuse, ce qui est déjà un bon signe.
     assert!(Torrent::seed(meta.clone(), &[&bad], id(50), 50, 0).is_err());
 }
+
+/// Un pair qui envoie des métadonnées fausses (comme Transmission 4.0.5 après une
+/// modification de ses trackers) : elles sont rejetées, ce pair est écarté, et un pair
+/// honnête fournit les bonnes.
+#[test]
+fn metadonnees_corrompues_ecartees() {
+    use mxtorrent_core::bencode::{self, Value};
+    use mxtorrent_core::wire::{Handshake, Message};
+    let a = data(100_000, 11);
+    let meta = create_torrent(&[NewFile { path: vec!["libre.bin".into()], data: &a }], &CreateOptions::default()).unwrap();
+    let mut leecher = Torrent::from_magnet(&Magnet::from_metainfo(&meta), id(60), 60, 0);
+
+    // Le menteur : poignée de main, extension ut_metadata, puis des octets faux de la bonne taille.
+    let liar_key = 900;
+    leecher.add_peer(liar_key);
+    let mut hs = Handshake::new(meta.info_hash, id(61)).encode();
+    let ext = Value::dict()
+        .with("m", Value::dict().with("ut_metadata", Value::Int(3)))
+        .with("metadata_size", Value::Int(meta.info_bytes.len() as i64));
+    Message::Extended { id: 0, payload: bencode::encode(&ext) }.encode_into(&mut hs);
+    leecher.on_data(liar_key, &hs);
+    leecher.tick(100);
+    let _ = leecher.poll_transmit(liar_key, 1 << 20);
+    let head = bencode::encode(
+        &Value::dict()
+            .with("msg_type", Value::Int(1))
+            .with("piece", Value::Int(0))
+            .with("total_size", Value::Int(meta.info_bytes.len() as i64)),
+    );
+    let mut bad = vec![0x42u8; meta.info_bytes.len()];
+    bad[0] = b'd';
+    let mut msg = Vec::new();
+    Message::Extended { id: 1, payload: [head, bad].concat() }.encode_into(&mut msg);
+    leecher.on_data(liar_key, &msg);
+    assert!(leecher.metainfo().is_none(), "des métadonnées fausses ne doivent jamais être acceptées");
+
+    // Un pair honnête arrive : le téléchargement se fait avec lui.
+    let seeder = Torrent::seed(meta.clone(), &[&a], id(62), 62, 0).unwrap();
+    let mut net = Net::new(vec![seeder, leecher], 9_000);
+    net.now = 200;
+    net.connect(0, 1);
+    assert!(net.run_until(|n| n.nodes[1].is_complete(), 3_000), "métadonnées {:.0} %", net.nodes[1].metadata_progress() * 100.0);
+    assert_eq!(net.nodes[1].file_bytes(0).unwrap(), a);
+}

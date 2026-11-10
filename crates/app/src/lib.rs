@@ -13,6 +13,8 @@ mod app;
 #[cfg(target_arch = "wasm32")]
 mod engine;
 #[cfg(target_arch = "wasm32")]
+mod gateway;
+#[cfg(target_arch = "wasm32")]
 mod icons;
 #[cfg(target_arch = "wasm32")]
 mod kit;
@@ -116,6 +118,15 @@ mod wasm {
             });
         }
 
+        /// Choisit la passerelle TCP/UDP (adresse HTTP d'un serveur mxtorrent-tracker).
+        pub fn set_gateway(&self, base: String) {
+            with_engine(|e| {
+                e.settings.gateway = base;
+                e.settings.use_gateway = true;
+                e.dirty = true;
+            });
+        }
+
         /// État des torrents en JSON (pour les scripts et les tests).
         pub fn status(&self) -> String {
             with_engine(|e| {
@@ -138,9 +149,43 @@ mod wasm {
                         })
                     })
                     .collect();
-                serde_json::json!({ "peer_id": String::from_utf8_lossy(&e.peer_id), "trackers": e.connected_trackers(), "torrents": list })
-                    .to_string()
+                let (phase, detail, fp, gw_peers) = e.gateway_status();
+                serde_json::json!({
+                    "peer_id": String::from_utf8_lossy(&e.peer_id),
+                    "trackers": e.connected_trackers(),
+                    "gateway": { "phase": format!("{phase:?}"), "detail": detail, "fingerprint": fp, "peers": gw_peers },
+                    "torrents": list,
+                })
+                .to_string()
             })
+            .unwrap_or_else(|| "{}".into())
+        }
+
+        /// Le journal du moteur, une ligne par événement (diagnostic).
+        pub fn log(&self) -> String {
+            with_engine(|e| e.log.iter().cloned().collect::<Vec<_>>().join("\n")).unwrap_or_default()
+        }
+
+        /// Les pairs d'un torrent, avec leur état (diagnostic).
+        pub fn peers(&self, info_hash: String) -> String {
+            with_engine(|e| {
+                let h = mxtorrent_core::InfoHash::parse(&info_hash)?;
+                let i = e.find(&h)?;
+                let list: Vec<serde_json::Value> = e.entries[i]
+                    .torrent
+                    .peers()
+                    .iter()
+                    .map(|p| {
+                        serde_json::json!({
+                            "client": p.client, "gateway": e.is_gateway_peer(p.key), "progress": p.progress,
+                            "downloaded": p.downloaded, "uploaded": p.uploaded, "choking_us": p.choking_us,
+                            "we_interested": p.we_interested, "requests": p.pending_requests,
+                        })
+                    })
+                    .collect();
+                Some(serde_json::json!({ "metadata": e.entries[i].torrent.metadata_progress(), "peers": list }).to_string())
+            })
+            .flatten()
             .unwrap_or_else(|| "{}".into())
         }
 

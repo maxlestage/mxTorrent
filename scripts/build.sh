@@ -43,6 +43,13 @@ if [ "$PROFILE" = "release" ] && [ -x "$WASM_OPT" ]; then
   fi
 fi
 
+# Passerelle TCP/UDP par défaut du client (sur GitHub Pages, il n'y a pas de serveur) :
+# MXT_GATEWAY_URL=https://mon-app.herokuapp.com/ ./scripts/build.sh
+if [ -n "${MXT_GATEWAY_URL:-}" ]; then
+  sed -i "s|<meta name=\"mxtorrent-gateway\" content=\"\">|<meta name=\"mxtorrent-gateway\" content=\"${MXT_GATEWAY_URL}\">|" "$OUT/app/index.html"
+  echo "passerelle par défaut : $MXT_GATEWAY_URL"
+fi
+
 # Version du cache hors ligne : change à chaque construction.
 VERSION="$(git rev-parse --short HEAD 2>/dev/null || date +%s)-$(date +%s)"
 sed -i "s/__BUILD__/$VERSION/" "$OUT/sw.js"

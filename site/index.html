@@ -119,7 +119,7 @@
         </div>
         <ul class="hero-badges reveal" aria-label="Points clés">
           <li data-i18n="hero.b1">0 octet à installer</li>
-          <li data-i18n="hero.b2">Compatible WebTorrent</li>
+          <li data-i18n="hero.b2">Tout le réseau BitTorrent</li>
           <li data-i18n="hero.b3">Open source (MIT)</li>
         </ul>
       </div>
@@ -129,8 +129,8 @@
     <!-- ============================================================ BANDEAU -->
     <section class="marquee" id="tech" aria-label="Technologies">
       <div class="marquee-track">
-        <span>🦀 Rust</span><span>⚙️ WebAssembly</span><span>🎨 egui</span><span>🔗 WebRTC</span><span>🧲 BitTorrent</span><span>🌐 WebTorrent</span><span>📲 PWA</span><span>🔐 SHA-1</span><span>🛰️ STUN</span><span>⚡ eframe</span>
-        <span aria-hidden="true">🦀 Rust</span><span aria-hidden="true">⚙️ WebAssembly</span><span aria-hidden="true">🎨 egui</span><span aria-hidden="true">🔗 WebRTC</span><span aria-hidden="true">🧲 BitTorrent</span><span aria-hidden="true">🌐 WebTorrent</span><span aria-hidden="true">📲 PWA</span><span aria-hidden="true">🔐 SHA-1</span><span aria-hidden="true">🛰️ STUN</span><span aria-hidden="true">⚡ eframe</span>
+        <span>🦀 Rust</span><span>⚙️ WebAssembly</span><span>🎨 egui</span><span>🔗 WebRTC</span><span>🧲 BitTorrent</span><span>🌐 WebTorrent</span><span>🥦 Brocolis</span><span>🛰️ DHT</span><span>📲 PWA</span><span>🔐 SHA-1</span><span>🛰️ STUN</span><span>⚡ eframe</span>
+        <span aria-hidden="true">🦀 Rust</span><span aria-hidden="true">⚙️ WebAssembly</span><span aria-hidden="true">🎨 egui</span><span aria-hidden="true">🔗 WebRTC</span><span aria-hidden="true">🧲 BitTorrent</span><span aria-hidden="true">🌐 WebTorrent</span><span aria-hidden="true">🥦 Brocolis</span><span aria-hidden="true">🛰️ DHT</span><span aria-hidden="true">📲 PWA</span><span aria-hidden="true">🔐 SHA-1</span><span aria-hidden="true">🛰️ STUN</span><span aria-hidden="true">⚡ eframe</span>
       </div>
     </section>
 
@@ -177,8 +177,8 @@
         </article>
         <article class="card tilt reveal">
           <div class="card-icon">🌍</div>
-          <h3 data-i18n="f6.t">Compatible WebTorrent</h3>
-          <p data-i18n="f6.d">Même protocole et mêmes trackers que webtorrent.io, Instant.io ou WebTorrent Desktop : vous rejoignez des essaims existants.</p>
+          <h3 data-i18n="f6.t">Tout le réseau BitTorrent</h3>
+          <p data-i18n="f6.d">Les navigateurs en direct (WebRTC), et tout le reste par la passerelle : trackers UDP et HTTP, DHT, pairs qBittorrent, Transmission, µTorrent… en TCP.</p>
         </article>
         <article class="card tilt reveal">
           <div class="card-icon">🌐</div>
@@ -263,7 +263,7 @@
         </div>
         <ul class="checks">
           <li class="reveal"><b data-i18n="c1.t">Aucun compte, aucun pisteur</b><span data-i18n="c1.d">Pas de cookie, pas de mesure d'audience. Vos réglages restent dans votre navigateur.</span></li>
-          <li class="reveal"><b data-i18n="c2.t">Chiffré de bout en bout</b><span data-i18n="c2.d">WebRTC impose DTLS : personne entre deux pairs ne lit les données.</span></li>
+          <li class="reveal"><b data-i18n="c2.t">Chiffré, même face au quantique</b><span data-i18n="c2.d">Entre vous et la passerelle, tout passe par Brocolis 🥦 (X25519 + ML-KEM-768, triple cliquet). Vers les pairs : DTLS en WebRTC, MSE en TCP.</span></li>
           <li class="reveal"><b data-i18n="c3.t">Chaque pièce vérifiée</b><span data-i18n="c3.d">Une pièce dont l'empreinte SHA-1 ne correspond pas est jetée et redemandée.</span></li>
           <li class="reveal"><b data-i18n="c4.t">Isolé du système</b><span data-i18n="c4.d">WebAssembly ne voit ni vos fichiers ni votre réseau local : seulement ce que vous lui donnez.</span></li>
           <li class="reveal"><b data-i18n="c5.t">Code ouvert</b><span data-i18n="c5.d">Tout le code est sur GitHub, sous licence MIT. Lisez-le, compilez-le, hébergez-le.</span></li>
@@ -279,8 +279,9 @@
             <tr><th data-i18n="cmp.r1">Installation</th><td class="yes" data-i18n="cmp.r1a">Aucune</td><td data-i18n="cmp.r1b">Programme à installer et mettre à jour</td></tr>
             <tr><th data-i18n="cmp.r2">Téléphone</th><td class="yes" data-i18n="cmp.r2a">Oui, même navigateur</td><td data-i18n="cmp.r2b">Application séparée, si elle existe</td></tr>
             <tr><th data-i18n="cmp.r3">Accès au système</th><td class="yes" data-i18n="cmp.r3a">Bac à sable du navigateur</td><td data-i18n="cmp.r3b">Accès complet au disque</td></tr>
-            <tr><th data-i18n="cmp.r4">Chiffrement</th><td class="yes" data-i18n="cmp.r4a">Toujours (DTLS)</td><td data-i18n="cmp.r4b">Optionnel</td></tr>
-            <tr><th data-i18n="cmp.r5">Pairs joignables</th><td data-i18n="cmp.r5a">Réseau WebTorrent (WebRTC)</td><td class="yes" data-i18n="cmp.r5b">Tout le réseau BitTorrent (TCP/UDP)</td></tr>
+            <tr><th data-i18n="cmp.r4">Chiffrement</th><td class="yes" data-i18n="cmp.r4a">Toujours : Brocolis 🥦, DTLS, MSE</td><td data-i18n="cmp.r4b">Optionnel</td></tr>
+            <tr><th data-i18n="cmp.r5">Pairs joignables</th><td class="yes" data-i18n="cmp.r5a">Tout le réseau : WebRTC, TCP, UDP, DHT</td><td class="yes" data-i18n="cmp.r5b">Tout le réseau BitTorrent (TCP/UDP)</td></tr>
+            <tr><th data-i18n="cmp.r6">Résistant au quantique</th><td class="yes" data-i18n="cmp.r6a">Oui, ML-KEM-768 (Brocolis v4)</td><td data-i18n="cmp.r6b">Non</td></tr>
           </tbody>
         </table>
       </div>
@@ -332,13 +333,14 @@
         <h2 class="reveal" data-i18n="faq.title">Questions fréquentes</h2>
       </header>
       <div class="faq-list">
-        <details class="reveal"><summary data-i18n="q1">Puis-je télécharger n'importe quel torrent ?</summary><p data-i18n="a1">Ceux dont l'essaim compte des pairs WebRTC (WebTorrent, Instant.io, mxTorrent…) ou des sources web. Un navigateur ne peut pas ouvrir de connexions TCP ou UDP brutes : les pairs qui n'utilisent que ces protocoles lui restent invisibles.</p></details>
+        <details class="reveal"><summary data-i18n="q1">Puis-je télécharger n'importe quel torrent ?</summary><p data-i18n="a1">Oui. Les navigateurs (WebTorrent, Instant.io, mxTorrent) se connectent directement en WebRTC ; tout le reste du réseau — trackers UDP et HTTP, DHT, clients TCP comme qBittorrent ou Transmission — passe par la passerelle mxTorrent, qu'un navigateur seul ne peut pas remplacer : il n'a pas le droit d'ouvrir de connexion TCP ou UDP.</p></details>
         <details class="reveal"><summary data-i18n="q2">Où sont stockés les fichiers ?</summary><p data-i18n="a2">Dans la mémoire de l'onglet, tant qu'il est ouvert. Quand un fichier est complet, vous l'enregistrez ou l'ouvrez en un clic. Gardez l'onglet ouvert pour continuer à partager.</p></details>
         <details class="reveal"><summary data-i18n="q3">Quelle taille de fichier est raisonnable ?</summary><p data-i18n="a3">Quelques centaines de mégaoctets passent très bien partout ; jusqu'à environ 2 Gio sur ordinateur. Sur téléphone, la mémoire disponible dépend de l'appareil.</p></details>
         <details class="reveal"><summary data-i18n="q4">Est-ce légal ?</summary><p data-i18n="a4">BitTorrent est une technologie légale, utilisée pour distribuer des logiciels libres, des films libres de droits, des jeux de données… Partagez uniquement des contenus dont vous avez les droits.</p></details>
         <details class="reveal"><summary data-i18n="q5">Pourquoi Rust et egui ?</summary><p data-i18n="a5">Rust donne un moteur rapide et sûr, compilé en WebAssembly. egui dessine toute l'interface dans un canevas : le même code donne la même application sur ordinateur et sur téléphone.</p></details>
         <details class="reveal"><summary data-i18n="q6">Puis-je héberger mon propre tracker ?</summary><p data-i18n="a6">Oui : le dépôt contient mxtorrent-tracker, un tracker WebSocket compatible WebTorrent. Lancez-le, puis ajoutez son adresse wss:// dans les réglages de l'application.</p></details>
-        <details class="reveal"><summary data-i18n="q7">Mon adresse IP est-elle visible ?</summary><p data-i18n="a7">Comme dans tout réseau pair à pair, les pairs avec qui vous échangez voient votre adresse. Les trackers aussi. Utilisez un VPN si c'est un souci.</p></details>
+        <details class="reveal"><summary data-i18n="q7">Mon adresse IP est-elle visible ?</summary><p data-i18n="a7">Les pairs WebRTC voient votre adresse, comme dans tout réseau pair à pair. Les pairs du réseau classique, eux, ne voient que l'adresse de la passerelle. Utilisez un VPN si c'est un souci.</p></details>
+        <details class="reveal"><summary data-i18n="q9">Que voit la passerelle ?</summary><p data-i18n="a9">Le réseau entre vous et elle ne voit rien : la session Brocolis 🥦 chiffre tout, même pour l'hébergeur qui termine TLS. La passerelle, elle, relaie le protocole BitTorrent : comme un tracker, elle sait quels torrents vous échangez. Hébergez la vôtre (un serveur Heroku suffit) pour n'avoir à faire confiance qu'à vous.</p></details>
         <details class="reveal"><summary data-i18n="q8">Ça fonctionne hors ligne ?</summary><p data-i18n="a8">L'application et ce site se lancent hors ligne une fois visités. Pour échanger, il faut évidemment du réseau.</p></details>
       </div>
     </section>

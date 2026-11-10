@@ -47,6 +47,13 @@ pub enum NetEvent {
     TorrentFiles(Vec<(String, Vec<u8>)>),
     /// Le serveur qui sert le client est aussi un tracker (mxtorrent-tracker, sur Heroku par exemple).
     LocalTracker(String),
+    /// Le serveur qui sert l'application est aussi une passerelle TCP/UDP (son adresse HTTP).
+    LocalGateway(String),
+    /// Le paquet de clés de la passerelle (JSON), ou l'erreur.
+    GatewayInfo(Result<Vec<u8>, String>),
+    GatewayOpen,
+    GatewayData(Vec<u8>),
+    GatewayClosed,
     /// Un lien magnet ou une URL reçus de la page (paramètre, collage, JavaScript).
     Link(String),
     /// Un `.torrent` téléchargé depuis une URL.
@@ -116,6 +123,57 @@ impl TrackerSocket {
 }
 
 impl Drop for TrackerSocket {
+    fn drop(&mut self) {
+        self.ws.set_onopen(None);
+        self.ws.set_onmessage(None);
+        self.ws.set_onclose(None);
+        self.ws.set_onerror(None);
+        let _ = self.ws.close();
+    }
+}
+
+// ---------------------------------------------------------------- passerelle
+
+/// La WebSocket binaire vers la passerelle TCP/UDP (contenu chiffré par Brocolis).
+pub struct GatewaySocket {
+    ws: WebSocket,
+    _cbs: Vec<Closure<dyn FnMut(JsValue)>>,
+}
+
+impl GatewaySocket {
+    pub fn connect(url: &str) -> Result<GatewaySocket, JsValue> {
+        let ws = WebSocket::new(url)?;
+        ws.set_binary_type(web_sys::BinaryType::Arraybuffer);
+        let on_open = Closure::<dyn FnMut(JsValue)>::new(move |_| push(NetEvent::GatewayOpen));
+        ws.set_onopen(Some(on_open.as_ref().unchecked_ref()));
+        let on_msg = Closure::<dyn FnMut(JsValue)>::new(move |e: JsValue| {
+            let e: MessageEvent = e.unchecked_into();
+            let data = e.data();
+            if data.is_instance_of::<js_sys::ArrayBuffer>() {
+                push(NetEvent::GatewayData(Uint8Array::new(&data).to_vec()));
+            }
+        });
+        ws.set_onmessage(Some(on_msg.as_ref().unchecked_ref()));
+        let on_close = Closure::<dyn FnMut(JsValue)>::new(move |_| push(NetEvent::GatewayClosed));
+        ws.set_onclose(Some(on_close.as_ref().unchecked_ref()));
+        ws.set_onerror(Some(on_close.as_ref().unchecked_ref()));
+        Ok(GatewaySocket { ws, _cbs: vec![on_open, on_msg, on_close] })
+    }
+
+    pub fn is_open(&self) -> bool {
+        self.ws.ready_state() == WebSocket::OPEN
+    }
+
+    pub fn buffered(&self) -> usize {
+        self.ws.buffered_amount() as usize
+    }
+
+    pub fn send(&self, bytes: &[u8]) {
+        let _ = self.ws.send_with_u8_array(bytes);
+    }
+}
+
+impl Drop for GatewaySocket {
     fn drop(&mut self) {
         self.ws.set_onopen(None);
         self.ws.set_onmessage(None);

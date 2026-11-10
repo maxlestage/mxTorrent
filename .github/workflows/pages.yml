@@ -39,6 +39,9 @@ jobs:
           cache: npm
       - run: npm ci
       - name: Construction (site, client, wasm-opt)
+        # Passerelle TCP/UDP du client publié (variable du dépôt, par ex. l'adresse Heroku).
+        env:
+          MXT_GATEWAY_URL: ${{ vars.MXT_GATEWAY_URL }}
         run: ./scripts/build.sh
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3

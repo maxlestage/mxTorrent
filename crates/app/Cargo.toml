@@ -22,6 +22,9 @@ eframe = { version = "0.37", default-features = false, features = ["glow"] }
 egui = { version = "0.37", default-features = false }
 log = "0.4"
 qrcode = { version = "0.14", default-features = false }
+# Le protocole Brocolis 🥦 (maxlestage/brocolis, sous sa propre licence) : chiffre tout ce qui passe par la passerelle.
+brocolis-proto = { git = "https://github.com/maxlestage/brocolis", rev = "8c7585e7451ed23d8a5905d23d5e91ce21e1292b" }
+base64 = "0.22"
 wasm-bindgen = "=0.2.130"
 wasm-bindgen-futures = "0.4"
 js-sys = "0.3"

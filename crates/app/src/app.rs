@@ -97,6 +97,8 @@ impl MxApp {
             }
             e.restore(prefs.saved);
         }
+        // Passerelle : celle inscrite dans la page ; celle du serveur, si c'en est un, la remplace.
+        engine.borrow_mut().auto_gateway = web::configured_gateway();
         web::detect_local_tracker();
         // Lien magnet transmis par le système (gestionnaire de protocole, partage Android…).
         for key in ["magnet", "url", "text", "torrent"] {
@@ -277,6 +279,20 @@ impl MxApp {
                     ui.painter().circle_filled(r.center(), 4.0, if n > 0 { GREEN } else { p.faint });
                     kit::muted(ui, p, &format!("{} {n}", tr("trackers connectés :", "trackers connected:")));
                     kit::muted(ui, p, &format!("{} {peers}", tr("pairs :", "peers:")));
+                    let (phase, _, _, gw_peers) = self.engine.borrow().gateway_status();
+                    if phase == crate::gateway::Phase::Ready {
+                        let (r, _) = ui.allocate_exact_size(Vec2::splat(8.0), Sense::hover());
+                        ui.painter().circle_filled(r.center(), 4.0, GREEN);
+                        kit::muted(
+                            ui,
+                            p,
+                            &format!(
+                                "{} 🥦 · {gw_peers} {}",
+                                tr("passerelle TCP/UDP chiffrée", "encrypted TCP/UDP gateway"),
+                                tr("pairs", "peers")
+                            ),
+                        );
+                    }
                     if pending > 0 {
                         kit::muted(ui, p, &format!("{} {pending}", tr("connexions en cours :", "connecting:")));
                     }
@@ -509,7 +525,7 @@ impl MxApp {
                 ui.add_space(10.0);
                 match self.tab {
                     1 => files_tab(ui, p, entry, &mut action_file),
-                    2 => peers_tab(ui, p, entry),
+                    2 => peers_tab(ui, p, entry, &e),
                     3 => trackers_tab(ui, p, entry, &e),
                     _ => overview_tab(ui, p, entry),
                 }
@@ -755,6 +771,40 @@ impl MxApp {
                         d.trackers = DEFAULT_TRACKERS.iter().map(|s| s.to_string()).collect();
                     }
                 });
+            });
+            kit::section(ui, p, &tr("Passerelle TCP/UDP", "TCP/UDP gateway"));
+            kit::card(ui, p, |ui| {
+                ui.label(
+                    RichText::new(tr(
+                        "Un navigateur ne peut pas ouvrir de connexion TCP ou UDP : la passerelle le fait pour lui (trackers UDP et HTTP, DHT, pairs qBittorrent, Transmission…). Tout ce qui passe entre elle et vous est chiffré par Brocolis 🥦 (X25519 + ML-KEM-768), puis par MSE vers les pairs.",
+                        "A browser cannot open TCP or UDP connections: the gateway does it for it (UDP and HTTP trackers, DHT, qBittorrent, Transmission peers…). Everything between it and you is encrypted by Brocolis 🥦 (X25519 + ML-KEM-768), then by MSE towards peers.",
+                    ))
+                    .font(font(13.0))
+                    .color(p.muted),
+                );
+                ui.checkbox(&mut d.use_gateway, tr("Utiliser la passerelle", "Use the gateway"));
+                kit::field(ui, p, &mut d.gateway, &tr("Adresse (vide : le serveur de l'application)", "Address (empty: the app's server)"));
+                let (phase, detail, fp, n) = self.engine.borrow().gateway_status();
+                let (color, text) = match phase {
+                    crate::gateway::Phase::Ready => (
+                        GREEN,
+                        format!(
+                            "{} · {n} {}",
+                            tr("Connectée, chiffrée Brocolis v4", "Connected, Brocolis v4 encrypted"),
+                            tr("pairs", "peers")
+                        ),
+                    ),
+                    crate::gateway::Phase::Off => (
+                        p.faint,
+                        tr("Aucune passerelle : seuls les pairs WebRTC sont joignables", "No gateway: only WebRTC peers are reachable"),
+                    ),
+                    crate::gateway::Phase::Failed => (AMBER, format!("{} : {detail}", tr("Indisponible", "Unavailable"))),
+                    _ => (AMBER, detail),
+                };
+                ui.label(RichText::new(text).font(font_semibold(13.5)).color(color));
+                if let Some(fp) = fp {
+                    ui.label(RichText::new(format!("{} {fp}", tr("Empreinte :", "Fingerprint:"))).font(font(12.0)).color(p.faint));
+                }
             });
             kit::section(ui, p, &tr("Système", "System"));
             if kit::button(ui, p, Kind::Secondary, Some(Icon::Magnet), &tr("Ouvrir les liens magnet ici", "Open magnet links here"), true)
@@ -1178,7 +1228,7 @@ fn files_tab(ui: &mut egui::Ui, p: Palette, entry: &Entry, toggle: &mut Option<(
     }
 }
 
-fn peers_tab(ui: &mut egui::Ui, p: Palette, entry: &Entry) {
+fn peers_tab(ui: &mut egui::Ui, p: Palette, entry: &Entry, e: &Engine) {
     let peers = entry.torrent.peers();
     if peers.is_empty() {
         kit::card(ui, p, |ui| {
@@ -1203,6 +1253,13 @@ fn peers_tab(ui: &mut egui::Ui, p: Palette, entry: &Entry) {
             }
             ui.horizontal(|ui| {
                 ui.label(RichText::new(&peer.client).font(font_semibold(14.5)));
+                // D'où vient le pair : navigateur (WebRTC) ou réseau classique via la passerelle.
+                if e.is_gateway_peer(peer.key) {
+                    let tag = if e.gateway_peer_encrypted(peer.key) { "TCP · MSE · 🥦" } else { "TCP · 🥦" };
+                    kit::chip(ui, tag, GREEN);
+                } else {
+                    kit::chip(ui, "WebRTC", CYAN);
+                }
                 ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
                     kit::muted(ui, p, &format!("{:.0} %", peer.progress * 100.0));
                 });

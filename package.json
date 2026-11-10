@@ -6,10 +6,12 @@
     "build": "./scripts/build.sh",
     "serve": "cargo run -p mxtorrent-tracker -- --static dist",
     "e2e": "node tests/e2e.cjs",
-    "assets": "node scripts/assets.cjs"
+    "assets": "node scripts/assets.cjs",
+    "classic": "tests/classic.sh"
   },
   "devDependencies": {
     "binaryen": "132.0.0",
-    "playwright": "1.63.0"
+    "playwright": "1.63.0",
+    "bittorrent-tracker": "11.2.3"
   }
 }

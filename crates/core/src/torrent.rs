@@ -25,6 +25,8 @@ const MAX_INCOMING_REQUESTS: usize = 512;
 const MAX_UNCHOKED: usize = 12;
 const REQUEST_TIMEOUT_MS: u64 = 30_000;
 const METADATA_TIMEOUT_MS: u64 = 15_000;
+const METADATA_RETRY_MS: u64 = 5_000;
+const METADATA_BAN_MS: u64 = 5 * 60_000;
 const KEEPALIVE_MS: u64 = 60_000;
 const IDLE_TIMEOUT_MS: u64 = 180_000;
 const HANDSHAKE_TIMEOUT_MS: u64 = 20_000;
@@ -117,6 +119,8 @@ struct Peer {
     early_haves: Vec<u32>,
     ut_metadata: Option<u8>,
     metadata_size: Option<usize>,
+    /// Après un refus de métadonnées : on ne redemande pas à ce pair avant cette heure.
+    metadata_retry_at: u64,
     client: Option<String>,
     reqq: usize,
     requested: Vec<(BlockReq, u64)>,
@@ -149,6 +153,7 @@ impl Peer {
             early_haves: Vec::new(),
             ut_metadata: None,
             metadata_size: None,
+            metadata_retry_at: 0,
             client: None,
             reqq: 250,
             requested: Vec::new(),
@@ -205,6 +210,8 @@ struct MetadataFetch {
     size: usize,
     pieces: Vec<Option<Vec<u8>>>,
     asked: Vec<Option<(PeerKey, u64)>>,
+    /// Qui a fourni chaque morceau : si l'empreinte ne correspond pas, ces pairs sont écartés.
+    from: Vec<Option<PeerKey>>,
 }
 
 /// Une session de torrent.
@@ -1339,6 +1346,7 @@ impl Torrent {
                 }
                 f.pieces[piece] = Some(data.to_vec());
                 f.asked[piece] = None;
+                f.from[piece] = Some(key);
                 if f.pieces.iter().all(|x| x.is_some()) {
                     let bytes: Vec<u8> = f.pieces.iter().flat_map(|x| x.as_ref().unwrap().iter().copied()).collect();
                     if InfoHash(sha1(&bytes)) == self.info_hash {
@@ -1350,10 +1358,13 @@ impl Torrent {
                                 self.install_metadata(meta);
                                 *p = self.peers.remove(&key).unwrap();
                             }
-                            Err(_) => self.fetch = None,
+                            Err(_) => self.reject_metadata(p, key),
                         }
                     } else {
-                        self.fetch = None;
+                        // Des octets qui ne correspondent pas à l'empreinte (pair menteur ou défaillant :
+                        // Transmission 4.0.5 en envoie après une modification de ses trackers).
+                        // On écarte ses fournisseurs pour un moment et on recommence avec d'autres.
+                        self.reject_metadata(p, key);
                     }
                 }
             }
@@ -1363,9 +1374,22 @@ impl Torrent {
                 {
                     f.asked[piece] = None;
                 }
-                p.metadata_size = None; // ce pair ne nous aidera pas
+                // Refus (souvent une demande trop tôt) : on réessaiera, plus tard.
+                p.metadata_retry_at = self.now + METADATA_RETRY_MS;
             }
             _ => {}
+        }
+    }
+
+    fn reject_metadata(&mut self, current: &mut Peer, current_key: PeerKey) {
+        let Some(f) = self.fetch.take() else { return };
+        let until = self.now + METADATA_BAN_MS;
+        for k in f.from.into_iter().flatten() {
+            if k == current_key {
+                current.metadata_retry_at = until;
+            } else if let Some(p) = self.peers.get_mut(&k) {
+                p.metadata_retry_at = until;
+            }
         }
     }
 
@@ -1375,10 +1399,10 @@ impl Torrent {
         }
         let now = self.now;
         if self.fetch.is_none() {
-            let size = self.peers.values().filter(|p| p.ut_metadata.is_some()).find_map(|p| p.metadata_size);
+            let size = self.peers.values().filter(|p| p.ut_metadata.is_some() && p.metadata_retry_at <= now).find_map(|p| p.metadata_size);
             let Some(size) = size else { return };
             let n = size.div_ceil(METADATA_PIECE);
-            self.fetch = Some(MetadataFetch { size, pieces: vec![None; n], asked: vec![None; n] });
+            self.fetch = Some(MetadataFetch { size, pieces: vec![None; n], asked: vec![None; n], from: vec![None; n] });
         }
         let f = self.fetch.as_mut().unwrap();
         for a in &mut f.asked {
@@ -1390,7 +1414,7 @@ impl Torrent {
         let helpers: Vec<PeerKey> = self
             .peers
             .iter()
-            .filter(|(_, p)| !p.closing && p.ut_metadata.is_some() && p.metadata_size == Some(size))
+            .filter(|(_, p)| !p.closing && p.ut_metadata.is_some() && p.metadata_size == Some(size) && p.metadata_retry_at <= now)
             .map(|(&k, _)| k)
             .collect();
         if helpers.is_empty() {
