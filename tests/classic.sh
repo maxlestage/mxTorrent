@@ -24,7 +24,16 @@ cat > "$WORK/conf/settings.json" <<JSON
   "rpc-host-whitelist-enabled": false }
 JSON
 transmission-daemon -f -g "$WORK/conf" > "$WORK/daemon.log" 2>&1 &
-for _ in $(seq 1 20); do transmission-remote 9191 -l > /dev/null 2>&1 && break; sleep 0.5; done
+ready=0
+for _ in $(seq 1 60); do
+  if transmission-remote 9191 -l > /dev/null 2>&1; then ready=1; break; fi
+  sleep 0.5
+done
+if [ "$ready" != 1 ]; then
+  echo "Transmission n'a pas démarré. Son journal :" >&2
+  cat "$WORK/daemon.log" >&2
+  exit 1
+fi
 transmission-remote 9191 -a "$WORK/libre.torrent" --download-dir "$WORK/data" > /dev/null
 # Transmission vérifie le fichier puis s'annonce sur les deux trackers.
 for _ in $(seq 1 60); do grep -q "51515" "$WORK/udp.log" && grep -q "51515" "$WORK/http.log" && break; sleep 1; done
