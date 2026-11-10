@@ -13,6 +13,10 @@ mod app;
 #[cfg(target_arch = "wasm32")]
 mod engine;
 #[cfg(target_arch = "wasm32")]
+mod icons;
+#[cfg(target_arch = "wasm32")]
+mod kit;
+#[cfg(target_arch = "wasm32")]
 mod net;
 #[cfg(target_arch = "wasm32")]
 mod qr;
@@ -76,6 +80,10 @@ mod wasm {
                 if let Ok(mut e) = e.try_borrow_mut() {
                     e.pump();
                     e.tick();
+                    // Quelque chose a changé (torrent ajouté, pair connecté…) : on redessine.
+                    if std::mem::take(&mut e.dirty) {
+                        crate::app::request_repaint();
+                    }
                 }
             });
             crate::web::window().set_interval_with_callback_and_timeout_and_arguments_0(tick.as_ref().unchecked_ref(), 250)?;

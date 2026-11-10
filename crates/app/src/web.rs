@@ -216,3 +216,37 @@ pub fn detect_local_tracker() {
         }
     });
 }
+
+/// Le navigateur sait-il ouvrir la feuille de partage du système (iOS, Android) ?
+pub fn can_share() -> bool {
+    js_sys::Reflect::has(&window().navigator(), &JsValue::from_str("share")).unwrap_or(false)
+}
+
+/// Ouvre la feuille de partage du système avec un lien.
+pub fn share_link(title: &str, url: &str) {
+    let nav = window().navigator();
+    let Ok(f) = js_sys::Reflect::get(&nav, &JsValue::from_str("share")) else { return };
+    let Ok(f) = f.dyn_into::<js_sys::Function>() else { return };
+    let data = js_sys::Object::new();
+    let _ = js_sys::Reflect::set(&data, &"title".into(), &JsValue::from_str(title));
+    let _ = js_sys::Reflect::set(&data, &"url".into(), &JsValue::from_str(url));
+    if let Ok(p) = f.call1(&nav, &data)
+        && let Ok(p) = p.dyn_into::<Promise>()
+    {
+        // L'utilisateur peut annuler : ce n'est pas une erreur.
+        wasm_bindgen_futures::spawn_local(async move {
+            let _ = JsFuture::from(p).await;
+        });
+    }
+}
+
+/// Lit une valeur du stockage local (absent en navigation privée stricte : pas d'erreur).
+pub fn load(key: &str) -> Option<String> {
+    window().local_storage().ok().flatten()?.get_item(key).ok().flatten()
+}
+
+pub fn store(key: &str, value: &str) {
+    if let Some(s) = window().local_storage().ok().flatten() {
+        let _ = s.set_item(key, value);
+    }
+}

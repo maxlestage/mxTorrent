@@ -1,8 +1,10 @@
-//! Couleurs et style : les mêmes que le site (violet électrique vers cyan).
+//! Couleurs, polices et style : sobre, contrasté, aux couleurs du site.
 
-use egui::{Color32, CornerRadius, FontFamily, FontId, Margin, Shadow, Stroke, TextStyle, Vec2, Visuals};
+use egui::{Color32, CornerRadius, FontData, FontDefinitions, FontFamily, FontId, Margin, Shadow, Stroke, TextStyle, Vec2, Visuals};
+use std::sync::Arc;
 
 pub const VIOLET: Color32 = Color32::from_rgb(139, 92, 246);
+pub const VIOLET_DARK: Color32 = Color32::from_rgb(112, 66, 222);
 pub const CYAN: Color32 = Color32::from_rgb(34, 211, 238);
 pub const PINK: Color32 = Color32::from_rgb(236, 72, 153);
 pub const GREEN: Color32 = Color32::from_rgb(52, 211, 153);
@@ -17,31 +19,59 @@ pub struct Palette {
     pub border: Color32,
     pub text: Color32,
     pub muted: Color32,
+    pub faint: Color32,
     pub dark: bool,
 }
 
 pub fn palette(dark: bool) -> Palette {
     if dark {
         Palette {
-            bg: Color32::from_rgb(7, 7, 13),
-            surface: Color32::from_rgb(16, 16, 28),
-            surface2: Color32::from_rgb(26, 26, 44),
-            border: Color32::from_rgb(40, 40, 66),
-            text: Color32::from_rgb(236, 236, 250),
-            muted: Color32::from_rgb(150, 150, 180),
+            bg: Color32::from_rgb(10, 10, 16),
+            surface: Color32::from_rgb(20, 20, 30),
+            surface2: Color32::from_rgb(29, 29, 42),
+            border: Color32::from_rgb(38, 38, 54),
+            text: Color32::from_rgb(242, 242, 248),
+            muted: Color32::from_rgb(146, 146, 166),
+            faint: Color32::from_rgb(92, 92, 112),
             dark,
         }
     } else {
         Palette {
-            bg: Color32::from_rgb(246, 245, 255),
+            bg: Color32::from_rgb(246, 246, 250),
             surface: Color32::from_rgb(255, 255, 255),
-            surface2: Color32::from_rgb(238, 236, 252),
-            border: Color32::from_rgb(220, 216, 245),
-            text: Color32::from_rgb(20, 18, 40),
-            muted: Color32::from_rgb(100, 98, 130),
+            surface2: Color32::from_rgb(240, 239, 247),
+            border: Color32::from_rgb(226, 224, 238),
+            text: Color32::from_rgb(18, 17, 30),
+            muted: Color32::from_rgb(104, 102, 124),
+            faint: Color32::from_rgb(160, 158, 178),
             dark,
         }
     }
+}
+
+/// La graisse demi-grasse d'Inter, pour les titres et les boutons.
+pub fn semibold() -> FontFamily {
+    FontFamily::Name("semibold".into())
+}
+
+pub fn font(size: f32) -> FontId {
+    FontId::new(size, FontFamily::Proportional)
+}
+
+pub fn font_semibold(size: f32) -> FontId {
+    FontId::new(size, semibold())
+}
+
+/// Inter (licence SIL OFL), réduite aux alphabets latin, grec et cyrillique :
+/// 270 Kio au lieu des 1,4 Mio des polices par défaut d'egui.
+pub fn install_fonts(ctx: &egui::Context) {
+    let mut f = FontDefinitions::empty();
+    f.font_data.insert("inter".into(), Arc::new(FontData::from_static(include_bytes!("../assets/fonts/Inter-400.ttf"))));
+    f.font_data.insert("inter-semibold".into(), Arc::new(FontData::from_static(include_bytes!("../assets/fonts/Inter-600.ttf"))));
+    f.families.insert(FontFamily::Proportional, vec!["inter".into()]);
+    f.families.insert(FontFamily::Monospace, vec!["inter".into()]);
+    f.families.insert(semibold(), vec!["inter-semibold".into(), "inter".into()]);
+    ctx.set_fonts(f);
 }
 
 pub fn apply(ctx: &egui::Context, dark: bool, mobile: bool) {
@@ -50,50 +80,62 @@ pub fn apply(ctx: &egui::Context, dark: bool, mobile: bool) {
     v.panel_fill = p.bg;
     v.window_fill = p.surface;
     v.window_stroke = Stroke::new(1.0, p.border);
-    v.window_corner_radius = CornerRadius::same(18);
-    v.window_shadow = Shadow { offset: [0, 12], blur: 40, spread: 0, color: Color32::from_black_alpha(if dark { 160 } else { 40 }) };
-    v.menu_corner_radius = CornerRadius::same(12);
-    v.extreme_bg_color = if dark { Color32::from_rgb(10, 10, 20) } else { Color32::from_rgb(250, 250, 255) };
+    v.window_corner_radius = CornerRadius::same(20);
+    v.window_shadow = Shadow { offset: [0, 16], blur: 48, spread: 0, color: Color32::from_black_alpha(if dark { 150 } else { 36 }) };
+    v.popup_shadow = Shadow { offset: [0, 8], blur: 24, spread: 0, color: Color32::from_black_alpha(if dark { 120 } else { 30 }) };
+    v.menu_corner_radius = CornerRadius::same(14);
+    v.extreme_bg_color = p.surface2;
     v.faint_bg_color = p.surface2;
     v.code_bg_color = p.surface2;
-    v.hyperlink_color = CYAN;
-    v.selection.bg_fill = VIOLET.gamma_multiply(0.55);
-    v.selection.stroke = Stroke::new(1.0, Color32::WHITE);
+    v.hyperlink_color = if dark { Color32::from_rgb(167, 139, 250) } else { VIOLET_DARK };
+    v.selection.bg_fill = VIOLET.gamma_multiply(0.45);
+    v.selection.stroke = Stroke::new(1.5, VIOLET);
     v.override_text_color = Some(p.text);
-    let r = CornerRadius::same(10);
+    v.text_cursor.stroke = Stroke::new(2.0, VIOLET);
+    v.slider_trailing_fill = true;
+    let r = CornerRadius::same(12);
     for (w, fill, stroke) in [
         (&mut v.widgets.noninteractive, p.surface, p.border),
-        (&mut v.widgets.inactive, p.surface2, p.border),
-        (&mut v.widgets.hovered, p.surface2.lerp_to_gamma(VIOLET, 0.25), VIOLET),
-        (&mut v.widgets.active, VIOLET.gamma_multiply(0.8), VIOLET),
+        (&mut v.widgets.inactive, p.surface2, Color32::TRANSPARENT),
+        (&mut v.widgets.hovered, p.surface2, p.border),
+        (&mut v.widgets.active, p.surface2, VIOLET),
         (&mut v.widgets.open, p.surface2, VIOLET),
     ] {
         w.bg_fill = fill;
         w.weak_bg_fill = fill;
         w.bg_stroke = Stroke::new(1.0, stroke);
         w.corner_radius = r;
+        w.expansion = 0.0;
     }
     v.widgets.noninteractive.fg_stroke = Stroke::new(1.0, p.text);
-    v.widgets.inactive.fg_stroke = Stroke::new(1.0, p.text);
+    v.widgets.inactive.fg_stroke = Stroke::new(1.5, p.text);
     v.widgets.hovered.fg_stroke = Stroke::new(1.5, p.text);
-    v.widgets.active.fg_stroke = Stroke::new(1.5, Color32::WHITE);
+    v.widgets.active.fg_stroke = Stroke::new(1.5, p.text);
     ctx.set_visuals(v);
 
-    let scale = if mobile { 1.12 } else { 1.0 };
+    // Sur téléphone : un peu plus grand, et des cibles d'au moins 44 points.
+    let k = if mobile { 1.06 } else { 1.0 };
     ctx.global_style_mut(|s| {
         s.text_styles = [
-            (TextStyle::Heading, FontId::new(22.0 * scale, FontFamily::Proportional)),
-            (TextStyle::Body, FontId::new(14.5 * scale, FontFamily::Proportional)),
-            (TextStyle::Monospace, FontId::new(13.0 * scale, FontFamily::Monospace)),
-            (TextStyle::Button, FontId::new(14.5 * scale, FontFamily::Proportional)),
-            (TextStyle::Small, FontId::new(11.5 * scale, FontFamily::Proportional)),
+            (TextStyle::Heading, FontId::new(21.0 * k, semibold())),
+            (TextStyle::Body, FontId::new(15.0 * k, FontFamily::Proportional)),
+            (TextStyle::Monospace, FontId::new(13.0 * k, FontFamily::Monospace)),
+            (TextStyle::Button, FontId::new(15.0 * k, semibold())),
+            (TextStyle::Small, FontId::new(12.5 * k, FontFamily::Proportional)),
         ]
         .into();
         s.spacing.item_spacing = Vec2::new(8.0, 8.0);
-        s.spacing.button_padding = if mobile { Vec2::new(14.0, 9.0) } else { Vec2::new(12.0, 6.0) };
-        s.spacing.interact_size = Vec2::new(40.0, if mobile { 40.0 } else { 28.0 });
-        s.spacing.window_margin = Margin::same(18);
+        s.spacing.button_padding = Vec2::new(14.0, if mobile { 11.0 } else { 7.0 });
+        s.spacing.interact_size = Vec2::new(40.0, if mobile { 44.0 } else { 32.0 });
+        s.spacing.window_margin = Margin::same(20);
+        s.spacing.menu_margin = Margin::same(10);
+        s.spacing.icon_width = 20.0;
+        s.spacing.icon_spacing = 8.0;
+        s.spacing.slider_width = if mobile { 180.0 } else { 220.0 };
         s.spacing.scroll.floating = true;
+        s.spacing.scroll.bar_width = 6.0;
+        s.interaction.selectable_labels = false;
+        s.animation_time = 0.12;
     });
 }
 
