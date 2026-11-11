@@ -283,7 +283,7 @@ p { margin: 0; }
 .checks span { color: var(--muted); font-size: 15px; }
 .compare { margin-top: 40px; overflow: hidden; border-radius: var(--radius); border: 1px solid var(--border); background: var(--surface); }
 .compare table { width: 100%; border-collapse: collapse; font-size: 15px; table-layout: fixed; }
-.compare th, .compare td { padding: 14px 16px; text-align: left; vertical-align: top; border-bottom: 1px solid var(--border); overflow-wrap: anywhere; hyphens: auto; }
+.compare th, .compare td { padding: 14px 16px; text-align: left; vertical-align: top; border-bottom: 1px solid var(--border); overflow-wrap: break-word; hyphens: manual; }
 @media (max-width: 639px) {
   .compare table { font-size: 13px; }
   .compare th, .compare td { padding: 10px 8px; }

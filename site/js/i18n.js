@@ -97,7 +97,7 @@ export const EN = {
   "cmp.r4a": "Always: Brocolis 🥦, DTLS, MSE",
   "cmp.r4b": "Optional",
   "cmp.r5": "Reachable peers",
-  "cmp.r5a": "The whole network: WebRTC, TCP, UDP, DHT",
+  "cmp.r5a": "The whole BitTorrent network: WebRTC, TCP, UDP, DHT",
   "cmp.r5b": "The whole BitTorrent network (TCP/UDP)",
   "cmp.r6": "Quantum resistant",
   "cmp.r6a": "Yes, ML-KEM-768 (Brocolis v4)",
