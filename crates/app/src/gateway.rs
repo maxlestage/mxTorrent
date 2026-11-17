@@ -213,7 +213,7 @@ impl Engine {
         match g.phase {
             Phase::Off | Phase::Failed if now >= g.retry_at && !self.entries.is_empty() => {
                 g.phase = Phase::Fetching;
-                g.detail = crate::i18n::tr("lecture du paquet de clés…", "reading the key bundle…");
+                g.detail = crate::i18n::tr("lecture du paquet de clés…", "reading the key bundle…", "чтение пакета ключей…");
                 let url = g.url("relay/bundle");
                 wasm_bindgen_futures::spawn_local(async move {
                     let r = web::fetch_bytes(&url, None).await.map(|(_, b)| b);
@@ -247,10 +247,10 @@ impl Engine {
 
     pub(crate) fn on_gateway_info(&mut self, r: Result<Vec<u8>, String>) {
         let parsed = r.and_then(|b| {
-            let v: serde_json::Value =
-                serde_json::from_slice(&b).map_err(|_| crate::i18n::tr("pas une passerelle mxTorrent", "not an mxTorrent gateway"))?;
+            let v: serde_json::Value = serde_json::from_slice(&b)
+                .map_err(|_| crate::i18n::tr("pas une passerelle mxTorrent", "not an mxTorrent gateway", "это не шлюз mxTorrent"))?;
             if v["protocol"] != "brocolis-v4" {
-                return Err(crate::i18n::tr("protocole inconnu", "unknown protocol"));
+                return Err(crate::i18n::tr("protocole inconnu", "unknown protocol", "неизвестный протокол"));
             }
             let bundle = KeyBundle::from_base64(v["bundle"].as_str().unwrap_or("")).map_err(|e| format!("{e:?}"))?;
             bundle.verify().map_err(|e| format!("{e:?}"))?;
@@ -270,7 +270,7 @@ impl Engine {
                     Ok(sock) => {
                         g.sock = Some(sock);
                         g.phase = Phase::Connecting;
-                        g.detail = crate::i18n::tr("connexion…", "connecting…");
+                        g.detail = crate::i18n::tr("connexion…", "connecting…", "подключение…");
                     }
                     Err(e) => self.gateway_fail(format!("{e:?}")),
                 }
@@ -287,7 +287,11 @@ impl Engine {
 
     pub(crate) fn on_gateway_closed(&mut self) {
         if self.gateway.as_ref().is_some_and(|g| g.phase != Phase::Off) {
-            self.gateway_fail(crate::i18n::tr("connexion perdue, nouvel essai bientôt", "connection lost, retrying soon"));
+            self.gateway_fail(crate::i18n::tr(
+                "connexion perdue, nouvel essai bientôt",
+                "connection lost, retrying soon",
+                "соединение потеряно, будет повторная попытка",
+            ));
         }
     }
 
@@ -298,11 +302,17 @@ impl Engine {
             let opened = Token4::from_bytes(&bytes).and_then(|t| session.decrypt(&t, now_secs(), &mut hasard::system()));
             let text = match opened {
                 Ok(Content::Text(t)) => t,
-                _ => return self.gateway_fail(crate::i18n::tr("message de la passerelle illisible", "unreadable gateway message")),
+                _ => {
+                    return self.gateway_fail(crate::i18n::tr(
+                        "message de la passerelle illisible",
+                        "unreadable gateway message",
+                        "нечитаемое сообщение шлюза",
+                    ));
+                }
             };
             match B64.decode(text.as_bytes()).ok().and_then(|b| Frame::decode_batch(&b)) {
                 Some(f) => f,
-                None => return self.gateway_fail(crate::i18n::tr("lot mal formé", "malformed batch")),
+                None => return self.gateway_fail(crate::i18n::tr("lot mal formé", "malformed batch", "искажённый пакет данных")),
             }
         };
         if let Some(g) = self.gateway.as_mut()

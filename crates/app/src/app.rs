@@ -6,7 +6,7 @@
 //! pendant un transfert.
 
 use crate::engine::{DEFAULT_TRACKERS, Engine, Entry, Saved, Settings};
-use crate::i18n::{bytes, duration, is_english, rate_str, set_english, tr};
+use crate::i18n::{Lang, bytes, count, duration, lang, rate_str, set_lang, tr};
 use crate::icons::{self, Icon};
 use crate::kit::{self, Kind};
 use crate::net::{self, NetEvent};
@@ -38,6 +38,9 @@ pub fn request_repaint() {
 #[serde(default)]
 struct Prefs {
     dark: bool,
+    /// Langue choisie ; absente des anciennes préférences, qui n'avaient que `english`.
+    lang: Option<Lang>,
+    /// Ancien champ de « mxtorrent-v2 », lu uniquement pour la migration.
     english: bool,
     saved: Saved,
     welcomed: bool,
@@ -45,7 +48,7 @@ struct Prefs {
 
 impl Default for Prefs {
     fn default() -> Self {
-        Prefs { dark: true, english: crate::i18n::browser_prefers_english(), saved: Saved::default(), welcomed: false }
+        Prefs { dark: true, lang: Some(crate::i18n::browser_lang()), english: false, saved: Saved::default(), welcomed: false }
     }
 }
 
@@ -83,10 +86,12 @@ impl MxApp {
         theme::install_fonts(&cc.egui_ctx);
         CTX.with(|c| *c.borrow_mut() = Some(cc.egui_ctx.clone()));
         let prefs: Prefs = web::load(STORAGE_KEY).and_then(|j| serde_json::from_str(&j).ok()).unwrap_or_default();
-        set_english(prefs.english);
+        // Anciennes préférences sans champ `lang` : l'anglais était un booléen.
+        set_lang(prefs.lang.unwrap_or(if prefs.english { Lang::En } else { Lang::Fr }));
         match web::query_param("lang").as_deref() {
-            Some("en") => set_english(true),
-            Some("fr") => set_english(false),
+            Some("en") => set_lang(Lang::En),
+            Some("fr") => set_lang(Lang::Fr),
+            Some("ru") => set_lang(Lang::Ru),
             _ => {}
         }
         {
@@ -140,7 +145,8 @@ impl MxApp {
             return;
         }
         self.saved_at = now;
-        let prefs = Prefs { dark: self.dark, english: is_english(), saved: self.engine.borrow().snapshot(), welcomed: self.welcomed };
+        let prefs =
+            Prefs { dark: self.dark, lang: Some(lang()), english: false, saved: self.engine.borrow().snapshot(), welcomed: self.welcomed };
         if let Ok(json) = serde_json::to_string(&prefs)
             && json != self.saved_json
         {
@@ -157,7 +163,7 @@ impl MxApp {
     fn submit_link(&mut self) -> bool {
         let text = self.link.trim().to_string();
         if text.is_empty() {
-            self.link_error = Some(tr("Collez d'abord un lien magnet.", "Paste a magnet link first."));
+            self.link_error = Some(tr("Collez d'abord un lien magnet.", "Paste a magnet link first.", "Сначала вставьте magnet-ссылку."));
             return false;
         }
         let mut ok = true;
@@ -229,7 +235,7 @@ impl MxApp {
                 ui.horizontal(|ui| {
                     ui.set_min_height(44.0);
                     if detail_on_phone {
-                        if kit::icon_button(ui, p, Icon::Back, 44.0, &tr("Retour", "Back")).clicked() {
+                        if kit::icon_button(ui, p, Icon::Back, 44.0, &tr("Retour", "Back", "Назад")).clicked() {
                             self.selected = None;
                         }
                     } else {
@@ -242,12 +248,13 @@ impl MxApp {
                         ui.label(RichText::new("Torrent").font(font_semibold(20.0)));
                     }
                     ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
-                        if kit::icon_button(ui, p, Icon::Settings, 44.0, &tr("Réglages", "Settings")).clicked() {
+                        if kit::icon_button(ui, p, Icon::Settings, 44.0, &tr("Réglages", "Settings", "Настройки")).clicked() {
                             self.settings_draft = Some(self.engine.borrow().settings.clone());
                             self.sheet = Some(Sheet::Settings);
                         }
                         if !self.mobile {
-                            if kit::button(ui, p, Kind::Primary, Some(Icon::Plus), &tr("Ajouter", "Add"), false).clicked() {
+                            if kit::button(ui, p, Kind::Primary, Some(Icon::Plus), &tr("Ajouter", "Add", "Добавить"), false).clicked()
+                            {
                                 self.sheet = Some(Sheet::Add);
                                 self.link_error = None;
                             }
@@ -277,8 +284,8 @@ impl MxApp {
                     ui.spacing_mut().item_spacing.x = 16.0;
                     let (r, _) = ui.allocate_exact_size(Vec2::splat(8.0), Sense::hover());
                     ui.painter().circle_filled(r.center(), 4.0, if n > 0 { GREEN } else { p.faint });
-                    kit::muted(ui, p, &format!("{} {n}", tr("trackers connectés :", "trackers connected:")));
-                    kit::muted(ui, p, &format!("{} {peers}", tr("pairs :", "peers:")));
+                    kit::muted(ui, p, &format!("{} {n}", tr("trackers connectés :", "trackers connected:", "трекеров подключено:")));
+                    kit::muted(ui, p, &format!("{} {peers}", tr("pairs :", "peers:", "пиров:")));
                     let (phase, _, _, gw_peers) = self.engine.borrow().gateway_status();
                     if phase == crate::gateway::Phase::Ready {
                         let (r, _) = ui.allocate_exact_size(Vec2::splat(8.0), Sense::hover());
@@ -288,17 +295,21 @@ impl MxApp {
                             p,
                             &format!(
                                 "{} 🥦 · {gw_peers} {}",
-                                tr("passerelle TCP/UDP chiffrée", "encrypted TCP/UDP gateway"),
-                                tr("pairs", "peers")
+                                tr("passerelle TCP/UDP chiffrée", "encrypted TCP/UDP gateway", "шифрованный шлюз TCP/UDP"),
+                                tr("pairs", "peers", "пиров")
                             ),
                         );
                     }
                     if pending > 0 {
-                        kit::muted(ui, p, &format!("{} {pending}", tr("connexions en cours :", "connecting:")));
+                        kit::muted(
+                            ui,
+                            p,
+                            &format!("{} {pending}", tr("connexions en cours :", "connecting:", "устанавливается соединений:")),
+                        );
                     }
                     ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
                         kit::muted(ui, p, concat!("v", env!("CARGO_PKG_VERSION")));
-                        if ui.link(RichText::new(tr("Journal", "Log")).font(font(13.0))).clicked() {
+                        if ui.link(RichText::new(tr("Journal", "Log", "Журнал")).font(font(13.0))).clicked() {
                             self.log_open = !self.log_open;
                         }
                     });
@@ -316,7 +327,7 @@ impl MxApp {
             return;
         }
         ui.horizontal(|ui| {
-            ui.label(RichText::new("Torrents").font(font_semibold(26.0)));
+            ui.label(RichText::new(tr("Torrents", "Torrents", "Торренты")).font(font_semibold(26.0)));
             ui.label(RichText::new(count.to_string()).font(font_semibold(26.0)).color(p.faint));
         });
         if self.mobile {
@@ -327,12 +338,17 @@ impl MxApp {
         }
         ui.add_space(4.0);
         if count >= 3 {
-            let items = [tr("Tous", "All"), tr("Actifs", "Active"), tr("Terminés", "Done"), tr("En pause", "Paused")];
+            let items = [
+                tr("Tous", "All", "Все"),
+                tr("Actifs", "Active", "Активные"),
+                tr("Terminés", "Done", "Завершённые"),
+                tr("En pause", "Paused", "На паузе"),
+            ];
             kit::segmented(ui, p, &items, &mut self.filter);
             ui.add_space(4.0);
         }
         if count > 6 {
-            kit::field(ui, p, &mut self.search, &tr("Rechercher", "Search"));
+            kit::field(ui, p, &mut self.search, &tr("Rechercher", "Search", "Поиск"));
             ui.add_space(4.0);
         }
         let engine = self.engine.clone();
@@ -355,7 +371,7 @@ impl MxApp {
         egui::ScrollArea::vertical().auto_shrink([false, false]).show(ui, |ui| {
             if items.is_empty() {
                 ui.add_space(30.0);
-                ui.vertical_centered(|ui| kit::muted(ui, p, &tr("Rien ici.", "Nothing here.")));
+                ui.vertical_centered(|ui| kit::muted(ui, p, &tr("Rien ici.", "Nothing here.", "Здесь ничего нет.")));
             }
             for i in items {
                 let entry = &e.entries[i];
@@ -381,12 +397,16 @@ impl MxApp {
                 let (r, _) = ui.allocate_exact_size(Vec2::splat(84.0), Sense::hover());
                 icons::logo(ui.painter(), r);
                 ui.add_space(10.0);
-                ui.label(RichText::new(tr("Bienvenue sur mxTorrent", "Welcome to mxTorrent")).font(font_semibold(24.0)));
+                ui.label(
+                    RichText::new(tr("Bienvenue sur mxTorrent", "Welcome to mxTorrent", "Добро пожаловать в mxTorrent"))
+                        .font(font_semibold(24.0)),
+                );
                 ui.add_space(2.0);
                 ui.label(
                     RichText::new(tr(
                         "Téléchargez avec un lien magnet ou partagez vos fichiers, directement de navigateur à navigateur.",
                         "Download with a magnet link or share your files, straight from browser to browser.",
+                        "Скачивайте по magnet-ссылке или делитесь файлами — прямо из браузера в браузер.",
                     ))
                     .font(font(15.0))
                     .color(p.muted),
@@ -397,15 +417,22 @@ impl MxApp {
                 ui.set_max_width(w);
                 kit::card(ui, p, |ui| {
                     ui.with_layout(Layout::top_down(Align::Min), |ui| {
-                        kit::section(ui, p, &tr("Télécharger", "Download"));
+                        kit::section(ui, p, &tr("Télécharger", "Download", "Скачать"));
                         ui.add_space(2.0);
-                        let resp = kit::field(ui, p, &mut self.link, &tr("Lien magnet ou empreinte", "Magnet link or info hash"));
+                        let resp = kit::field(
+                            ui,
+                            p,
+                            &mut self.link,
+                            &tr("Lien magnet ou empreinte", "Magnet link or info hash", "Magnet-ссылка или хеш"),
+                        );
                         let enter = resp.lost_focus() && ui.input(|i| i.key_pressed(egui::Key::Enter));
                         if let Some(err) = &self.link_error {
                             ui.label(RichText::new(err).font(font(13.5)).color(RED));
                         }
                         ui.add_space(2.0);
-                        if kit::button(ui, p, Kind::Primary, Some(Icon::Download), &tr("Télécharger", "Download"), true).clicked() || enter
+                        if kit::button(ui, p, Kind::Primary, Some(Icon::Download), &tr("Télécharger", "Download", "Скачать"), true)
+                            .clicked()
+                            || enter
                         {
                             self.submit_link();
                         }
@@ -414,18 +441,26 @@ impl MxApp {
                 ui.add_space(12.0);
                 kit::card(ui, p, |ui| {
                     ui.with_layout(Layout::top_down(Align::Min), |ui| {
-                        kit::section(ui, p, &tr("Partager", "Share"));
+                        kit::section(ui, p, &tr("Partager", "Share", "Поделиться"));
                         ui.label(
                             RichText::new(tr(
                                 "Choisissez des fichiers : mxTorrent crée le torrent et vous donne un lien et un QR code.",
                                 "Pick files: mxTorrent creates the torrent and gives you a link and a QR code.",
+                                "Выберите файлы: mxTorrent создаст торрент и даст вам ссылку и QR-код.",
                             ))
                             .font(font(14.5))
                             .color(p.muted),
                         );
                         ui.add_space(4.0);
-                        if kit::button(ui, p, Kind::Secondary, Some(Icon::Upload), &tr("Choisir des fichiers", "Choose files"), true)
-                            .clicked()
+                        if kit::button(
+                            ui,
+                            p,
+                            Kind::Secondary,
+                            Some(Icon::Upload),
+                            &tr("Choisir des fichiers", "Choose files", "Выбрать файлы"),
+                            true,
+                        )
+                        .clicked()
                         {
                             pick_share();
                         }
@@ -434,7 +469,7 @@ impl MxApp {
                             p,
                             Kind::Ghost,
                             Some(Icon::File),
-                            &tr("Ouvrir un fichier .torrent", "Open a .torrent file"),
+                            &tr("Ouvrir un fichier .torrent", "Open a .torrent file", "Открыть файл .torrent"),
                             true,
                         )
                         .clicked()
@@ -448,6 +483,7 @@ impl MxApp {
                     RichText::new(tr(
                         "Rien à installer, aucun compte. Les données passent directement entre navigateurs, chiffrées.",
                         "Nothing to install, no account. Data flows directly between browsers, encrypted.",
+                        "Ничего устанавливать не нужно, никаких аккаунтов. Данные идут напрямую между браузерами в шифрованном виде.",
                     ))
                     .font(font(12.5))
                     .color(p.faint),
@@ -489,12 +525,16 @@ impl MxApp {
                         ui.horizontal_wrapped(|ui| {
                             kit::chip(ui, &state_label(state), color);
                             if entry.created_here {
-                                kit::chip(ui, &tr("créé ici", "created here"), CYAN);
+                                kit::chip(ui, &tr("créé ici", "created here", "создан здесь"), CYAN);
                             }
                         });
                         let size = match t.total_length() {
-                            Some(total) => format!("{} {} {}", bytes(t.verified_bytes()), tr("sur", "of"), bytes(total)),
-                            None => tr("Recherche des métadonnées auprès des pairs…", "Fetching metadata from peers…"),
+                            Some(total) => format!("{} {} {}", bytes(t.verified_bytes()), tr("sur", "of", "из"), bytes(total)),
+                            None => tr(
+                                "Recherche des métadonnées auprès des pairs…",
+                                "Fetching metadata from peers…",
+                                "Запрос метаданных у пиров…",
+                            ),
                         };
                         kit::muted(ui, p, &size);
                     });
@@ -505,22 +545,31 @@ impl MxApp {
                 ui.horizontal(|ui| {
                     ui.spacing_mut().item_spacing.x = 8.0;
                     let w = ((ui.available_width() - 24.0) / 4.0).max(60.0);
-                    let (ic, label) = if paused { (Icon::Play, tr("Reprendre", "Resume")) } else { (Icon::Pause, tr("Pause", "Pause")) };
+                    let (ic, label) = if paused {
+                        (Icon::Play, tr("Reprendre", "Resume", "Продолжить"))
+                    } else {
+                        (Icon::Pause, tr("Pause", "Pause", "Пауза"))
+                    };
                     if kit::tile(ui, p, ic, &label, p.text, w).clicked() {
                         action_pause = Some(!paused);
                     }
-                    if kit::tile(ui, p, Icon::Qr, &tr("Partager", "Share"), p.text, w).clicked() {
+                    if kit::tile(ui, p, Icon::Qr, &tr("Partager", "Share", "Поделиться"), p.text, w).clicked() {
                         self.sheet = Some(Sheet::Share(h));
                     }
-                    if kit::tile(ui, p, Icon::Link, &tr("Copier", "Copy"), p.text, w).clicked() {
+                    if kit::tile(ui, p, Icon::Link, &tr("Copier", "Copy", "Копировать"), p.text, w).clicked() {
                         action_copy = true;
                     }
-                    if kit::tile(ui, p, Icon::Trash, &tr("Retirer", "Remove"), RED, w).clicked() {
+                    if kit::tile(ui, p, Icon::Trash, &tr("Retirer", "Remove", "Удалить"), RED, w).clicked() {
                         self.sheet = Some(Sheet::Remove(h));
                     }
                 });
                 ui.add_space(14.0);
-                let tabs = [tr("Aperçu", "Overview"), tr("Fichiers", "Files"), tr("Pairs", "Peers"), "Trackers".to_string()];
+                let tabs = [
+                    tr("Aperçu", "Overview", "Обзор"),
+                    tr("Fichiers", "Files", "Файлы"),
+                    tr("Pairs", "Peers", "Пиры"),
+                    tr("Trackers", "Trackers", "Трекеры"),
+                ];
                 kit::segmented(ui, p, &tabs, &mut self.tab);
                 ui.add_space(10.0);
                 match self.tab {
@@ -544,7 +593,7 @@ impl MxApp {
         if action_copy && let Some(i) = e.find(&h) {
             let m = e.entries[i].magnet();
             ui.ctx().copy_text(m);
-            e.toast(tr("Lien magnet copié", "Magnet link copied"), true);
+            e.toast(tr("Lien magnet copié", "Magnet link copied", "Magnet-ссылка скопирована"), true);
         }
     }
 
@@ -555,7 +604,15 @@ impl MxApp {
             let (r, _) = ui.allocate_exact_size(Vec2::splat(64.0), Sense::hover());
             icons::logo(ui.painter(), r);
             ui.add_space(8.0);
-            kit::muted(ui, p, &tr("Choisissez un torrent pour voir ses détails.", "Pick a torrent to see its details."));
+            kit::muted(
+                ui,
+                p,
+                &tr(
+                    "Choisissez un torrent pour voir ses détails.",
+                    "Pick a torrent to see its details.",
+                    "Выберите торрент, чтобы посмотреть подробности.",
+                ),
+            );
         });
     }
 
@@ -578,10 +635,18 @@ impl MxApp {
         let p = self.p();
         let (done, close) = show_sheet(ctx, p, self.mobile, "add", |ui| {
             let mut done = false;
-            ui.label(RichText::new(tr("Ajouter un torrent", "Add a torrent")).font(font_semibold(21.0)));
+            ui.label(RichText::new(tr("Ajouter un torrent", "Add a torrent", "Добавить торрент")).font(font_semibold(21.0)));
             ui.add_space(6.0);
-            let resp =
-                kit::field(ui, p, &mut self.link, &tr("Lien magnet, empreinte ou URL .torrent", "Magnet link, info hash or .torrent URL"));
+            let resp = kit::field(
+                ui,
+                p,
+                &mut self.link,
+                &tr(
+                    "Lien magnet, empreinte ou URL .torrent",
+                    "Magnet link, info hash or .torrent URL",
+                    "Magnet-ссылка, хеш или URL .torrent",
+                ),
+            );
             if !self.mobile && !resp.has_focus() && self.link.is_empty() {
                 resp.request_focus();
             }
@@ -590,14 +655,16 @@ impl MxApp {
                 ui.label(RichText::new(err).font(font(13.5)).color(RED));
             }
             ui.add_space(2.0);
-            if kit::button(ui, p, Kind::Primary, Some(Icon::Download), &tr("Télécharger", "Download"), true).clicked() || enter {
+            if kit::button(ui, p, Kind::Primary, Some(Icon::Download), &tr("Télécharger", "Download", "Скачать"), true).clicked() || enter
+            {
                 done = self.submit_link();
             }
             ui.add_space(6.0);
             ui.horizontal(|ui| {
                 let w = (ui.available_width() - 8.0) / 2.0;
                 ui.allocate_ui(vec2(w, 52.0), |ui| {
-                    if kit::button(ui, p, Kind::Secondary, Some(Icon::Upload), &tr("Partager", "Share"), true).clicked() {
+                    if kit::button(ui, p, Kind::Secondary, Some(Icon::Upload), &tr("Partager", "Share", "Поделиться"), true).clicked()
+                    {
                         pick_share();
                         done = true;
                     }
@@ -628,7 +695,7 @@ impl MxApp {
         let (done, close) = show_sheet(ctx, p, self.mobile, "share", |ui| {
             let mut done = false;
             ui.vertical_centered(|ui| {
-                ui.label(RichText::new(tr("Partager", "Share")).font(font_semibold(21.0)));
+                ui.label(RichText::new(tr("Partager", "Share", "Поделиться")).font(font_semibold(21.0)));
                 ui.add(egui::Label::new(RichText::new(&name).font(font(14.0)).color(p.muted)).truncate());
                 ui.add_space(10.0);
                 let size = ui.available_width().min(220.0).min(ui.ctx().content_rect().height() * 0.3);
@@ -638,6 +705,7 @@ impl MxApp {
                     RichText::new(tr(
                         "Scannez ce code avec un autre téléphone, ou envoyez le lien. Gardez cet onglet ouvert : c'est lui qui partage.",
                         "Scan this code with another phone, or send the link. Keep this tab open: it is the one sharing.",
+                        "Отсканируйте код другим телефоном или отправьте ссылку. Держите вкладку открытой: именно она ведёт раздачу.",
                     ))
                     .font(font(13.0))
                     .color(p.muted),
@@ -645,27 +713,53 @@ impl MxApp {
             });
             ui.add_space(10.0);
             if web::can_share() {
-                if kit::button(ui, p, Kind::Primary, Some(Icon::Share), &tr("Envoyer le lien…", "Send the link…"), true).clicked() {
+                if kit::button(
+                    ui,
+                    p,
+                    Kind::Primary,
+                    Some(Icon::Share),
+                    &tr("Envoyer le lien…", "Send the link…", "Отправить ссылку…"),
+                    true,
+                )
+                .clicked()
+                {
                     web::share_link(&name, &app_link(&magnet));
                 }
-                if kit::button(ui, p, Kind::Secondary, Some(Icon::Link), &tr("Copier le lien magnet", "Copy the magnet link"), true)
-                    .clicked()
+                if kit::button(
+                    ui,
+                    p,
+                    Kind::Secondary,
+                    Some(Icon::Link),
+                    &tr("Copier le lien magnet", "Copy the magnet link", "Копировать magnet-ссылку"),
+                    true,
+                )
+                .clicked()
                 {
                     ui.ctx().copy_text(magnet.clone());
-                    engine.borrow_mut().toast(tr("Lien copié", "Link copied"), true);
+                    engine.borrow_mut().toast(tr("Lien copié", "Link copied", "Ссылка скопирована"), true);
                 }
-            } else if kit::button(ui, p, Kind::Primary, Some(Icon::Link), &tr("Copier le lien magnet", "Copy the magnet link"), true)
-                .clicked()
+            } else if kit::button(
+                ui,
+                p,
+                Kind::Primary,
+                Some(Icon::Link),
+                &tr("Copier le lien magnet", "Copy the magnet link", "Копировать magnet-ссылку"),
+                true,
+            )
+            .clicked()
             {
                 ui.ctx().copy_text(magnet.clone());
-                engine.borrow_mut().toast(tr("Lien copié", "Link copied"), true);
+                engine.borrow_mut().toast(tr("Lien copié", "Link copied", "Ссылка скопирована"), true);
             }
             ui.horizontal(|ui| {
                 let w = (ui.available_width() - 8.0) / 2.0;
                 ui.allocate_ui(vec2(w, 52.0), |ui| {
-                    if kit::button(ui, p, Kind::Secondary, Some(Icon::Globe), &tr("Lien web", "Web link"), true).clicked() {
+                    if kit::button(ui, p, Kind::Secondary, Some(Icon::Globe), &tr("Lien web", "Web link", "Веб-ссылка"), true).clicked()
+                    {
                         ui.ctx().copy_text(app_link(&magnet));
-                        engine.borrow_mut().toast(tr("Lien vers l'application copié", "App link copied"), true);
+                        engine
+                            .borrow_mut()
+                            .toast(tr("Lien vers l'application copié", "App link copied", "Ссылка на приложение скопирована"), true);
                     }
                 });
                 ui.allocate_ui(vec2(w, 52.0), |ui| {
@@ -676,7 +770,7 @@ impl MxApp {
                     }
                 });
             });
-            if kit::button(ui, p, Kind::Ghost, None, &tr("Fermer", "Close"), true).clicked() {
+            if kit::button(ui, p, Kind::Ghost, None, &tr("Fermer", "Close", "Закрыть"), true).clicked() {
                 done = true;
             }
             done
@@ -695,7 +789,7 @@ impl MxApp {
         };
         let (done, close) = show_sheet(ctx, p, self.mobile, "remove", |ui| {
             let mut done = false;
-            ui.label(RichText::new(tr("Retirer ce torrent ?", "Remove this torrent?")).font(font_semibold(21.0)));
+            ui.label(RichText::new(tr("Retirer ce torrent ?", "Remove this torrent?", "Удалить этот торрент?")).font(font_semibold(21.0)));
             ui.add(egui::Label::new(RichText::new(&name).font(font_semibold(15.0))).wrap());
             kit::muted(
                 ui,
@@ -703,17 +797,18 @@ impl MxApp {
                 &tr(
                     "Les données téléchargées vivent dans cet onglet : enregistrez d'abord les fichiers que vous voulez garder.",
                     "Downloaded data lives in this tab: save the files you want to keep first.",
+                    "Скачанные данные живут в этой вкладке: сначала сохраните файлы, которые хотите оставить.",
                 ),
             );
             ui.add_space(8.0);
-            if kit::button(ui, p, Kind::Danger, Some(Icon::Trash), &tr("Retirer", "Remove"), true).clicked() {
+            if kit::button(ui, p, Kind::Danger, Some(Icon::Trash), &tr("Retirer", "Remove", "Удалить"), true).clicked() {
                 self.engine.borrow_mut().remove(&h);
                 if self.selected == Some(h) {
                     self.selected = None;
                 }
                 done = true;
             }
-            if kit::button(ui, p, Kind::Ghost, None, &tr("Annuler", "Cancel"), true).clicked() {
+            if kit::button(ui, p, Kind::Ghost, None, &tr("Annuler", "Cancel", "Отмена"), true).clicked() {
                 done = true;
             }
             done
@@ -726,32 +821,48 @@ impl MxApp {
         let peer_id = String::from_utf8_lossy(&self.engine.borrow().peer_id).into_owned();
         let (done, close) = show_sheet(ctx, p, self.mobile, "settings", |ui| {
             let mut done = false;
-            ui.label(RichText::new(tr("Réglages", "Settings")).font(font_semibold(21.0)));
-            kit::section(ui, p, &tr("Apparence", "Appearance"));
+            ui.label(RichText::new(tr("Réglages", "Settings", "Настройки")).font(font_semibold(21.0)));
+            kit::section(ui, p, &tr("Apparence", "Appearance", "Оформление"));
             let mut theme_i = if self.dark { 0 } else { 1 };
-            if kit::segmented(ui, p, &[tr("Sombre", "Dark"), tr("Clair", "Light")], &mut theme_i) {
+            if kit::segmented(ui, p, &[tr("Sombre", "Dark", "Тёмная"), tr("Clair", "Light", "Светлая")], &mut theme_i) {
                 self.dark = theme_i == 0;
             }
-            let mut lang_i = if is_english() { 1 } else { 0 };
-            if kit::segmented(ui, p, &["Français".to_string(), "English".to_string()], &mut lang_i) {
-                set_english(lang_i == 1);
+            let mut lang_i = match lang() {
+                Lang::Fr => 0,
+                Lang::En => 1,
+                Lang::Ru => 2,
+            };
+            if kit::segmented(ui, p, &["Français".to_string(), "English".to_string(), "Русский".to_string()], &mut lang_i) {
+                set_lang(match lang_i {
+                    0 => Lang::Fr,
+                    1 => Lang::En,
+                    _ => Lang::Ru,
+                });
             }
             let Some(d) = &mut self.settings_draft else { return true };
-            kit::section(ui, p, &tr("Réseau", "Network"));
+            kit::section(ui, p, &tr("Réseau", "Network", "Сеть"));
             kit::card(ui, p, |ui| {
                 ui.spacing_mut().interact_size.y = 36.0;
-                kit::stepper(ui, p, &tr("Pairs par torrent", "Peers per torrent"), &mut d.max_peers, 5, 100, 5);
-                kit::stepper(ui, p, &tr("Offres par annonce", "Offers per announce"), &mut d.offers_per_announce, 1, 10, 1);
-                ui.checkbox(&mut d.use_web_seeds, tr("Sources web (HTTP)", "Web seeds (HTTP)"));
+                kit::stepper(ui, p, &tr("Pairs par torrent", "Peers per torrent", "Пиров на торрент"), &mut d.max_peers, 5, 100, 5);
+                kit::stepper(
+                    ui,
+                    p,
+                    &tr("Offres par annonce", "Offers per announce", "Предложений на анонс"),
+                    &mut d.offers_per_announce,
+                    1,
+                    10,
+                    1,
+                );
+                ui.checkbox(&mut d.use_web_seeds, tr("Sources web (HTTP)", "Web seeds (HTTP)", "Веб-сиды (HTTP)"));
             });
-            kit::section(ui, p, &tr("Trackers WebSocket", "WebSocket trackers"));
+            kit::section(ui, p, &tr("Trackers WebSocket", "WebSocket trackers", "Трекеры WebSocket"));
             kit::card(ui, p, |ui| {
                 let mut remove = None;
                 for (i, t) in d.trackers.iter().enumerate() {
                     ui.horizontal(|ui| {
                         ui.add(egui::Label::new(RichText::new(t.trim_start_matches("wss://")).font(font(14.0))).truncate());
                         ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
-                            if kit::icon_button(ui, p, Icon::Close, 32.0, &tr("Retirer", "Remove")).clicked() {
+                            if kit::icon_button(ui, p, Icon::Close, 32.0, &tr("Retirer", "Remove", "Удалить")).clicked() {
                                 remove = Some(i);
                             }
                         });
@@ -763,78 +874,99 @@ impl MxApp {
                 kit::field(ui, p, &mut self.new_tracker, "wss://…");
                 let ok = self.new_tracker.starts_with("wss://") || self.new_tracker.starts_with("ws://");
                 ui.horizontal(|ui| {
-                    if ok && kit::button(ui, p, Kind::Secondary, Some(Icon::Plus), &tr("Ajouter", "Add"), false).clicked() {
+                    if ok && kit::button(ui, p, Kind::Secondary, Some(Icon::Plus), &tr("Ajouter", "Add", "Добавить"), false).clicked()
+                    {
                         d.trackers.push(self.new_tracker.trim().to_string());
                         self.new_tracker.clear();
                     }
-                    if kit::button(ui, p, Kind::Ghost, None, &tr("Par défaut", "Defaults"), false).clicked() {
+                    if kit::button(ui, p, Kind::Ghost, None, &tr("Par défaut", "Defaults", "По умолчанию"), false).clicked() {
                         d.trackers = DEFAULT_TRACKERS.iter().map(|s| s.to_string()).collect();
                     }
                 });
             });
-            kit::section(ui, p, &tr("Passerelle TCP/UDP", "TCP/UDP gateway"));
+            kit::section(ui, p, &tr("Passerelle TCP/UDP", "TCP/UDP gateway", "Шлюз TCP/UDP"));
             kit::card(ui, p, |ui| {
                 ui.label(
                     RichText::new(tr(
-                        "Un navigateur ne peut pas ouvrir de connexion TCP ou UDP : la passerelle le fait pour lui (trackers UDP et HTTP, DHT, pairs qBittorrent, Transmission…). Tout ce qui passe entre elle et vous est chiffré par Brocolis 🥦 (X25519 + ML-KEM-768), puis par MSE vers les pairs.",
-                        "A browser cannot open TCP or UDP connections: the gateway does it for it (UDP and HTTP trackers, DHT, qBittorrent, Transmission peers…). Everything between it and you is encrypted by Brocolis 🥦 (X25519 + ML-KEM-768), then by MSE towards peers.",
-                    ))
+                        "Un navigateur ne peut pas ouvrir de connexion TCP ou UDP : la passerelle le fait pour lui (trackers UDP et HTTP, DHT, pairs qBittorrent, Transmission…). Tout ce qui passe entre elle et vous est chiffré par Brocolis 🥦 (X25519 + ML-KEM-768), puis par MSE vers les pairs.", "A browser cannot open TCP or UDP connections: the gateway does it for it (UDP and HTTP trackers, DHT, qBittorrent, Transmission peers…). Everything between it and you is encrypted by Brocolis 🥦 (X25519 + ML-KEM-768), then by MSE towards peers.", "Браузер не может открывать TCP- и UDP-соединения: за него это делает шлюз (UDP- и HTTP-трекеры, DHT, пиры qBittorrent, Transmission…). Всё между вами и шлюзом шифруется Brocolis 🥦 (X25519 + ML-KEM-768), а к пирам — по MSE."))
                     .font(font(13.0))
                     .color(p.muted),
                 );
-                ui.checkbox(&mut d.use_gateway, tr("Utiliser la passerelle", "Use the gateway"));
-                kit::field(ui, p, &mut d.gateway, &tr("Adresse (vide : le serveur de l'application)", "Address (empty: the app's server)"));
+                ui.checkbox(&mut d.use_gateway, tr("Utiliser la passerelle", "Use the gateway", "Использовать шлюз"));
+                kit::field(
+                    ui,
+                    p,
+                    &mut d.gateway,
+                    &tr(
+                        "Adresse (vide : le serveur de l'application)",
+                        "Address (empty: the app's server)",
+                        "Адрес (пусто — сервер приложения)",
+                    ),
+                );
                 let (phase, detail, fp, n) = self.engine.borrow().gateway_status();
                 let (color, text) = match phase {
                     crate::gateway::Phase::Ready => (
                         GREEN,
                         format!(
                             "{} · {n} {}",
-                            tr("Connectée, chiffrée Brocolis v4", "Connected, Brocolis v4 encrypted"),
-                            tr("pairs", "peers")
+                            tr("Connectée, chiffrée Brocolis v4", "Connected, Brocolis v4 encrypted", "Подключён, шифрование Brocolis v4"),
+                            tr("pairs", "peers", "пиров")
                         ),
                     ),
                     crate::gateway::Phase::Off => (
                         p.faint,
-                        tr("Aucune passerelle : seuls les pairs WebRTC sont joignables", "No gateway: only WebRTC peers are reachable"),
+                        tr(
+                            "Aucune passerelle : seuls les pairs WebRTC sont joignables",
+                            "No gateway: only WebRTC peers are reachable",
+                            "Нет шлюза: доступны только пиры WebRTC",
+                        ),
                     ),
-                    crate::gateway::Phase::Failed => (AMBER, format!("{} : {detail}", tr("Indisponible", "Unavailable"))),
+                    crate::gateway::Phase::Failed => (AMBER, format!("{} : {detail}", tr("Indisponible", "Unavailable", "Недоступен"))),
                     _ => (AMBER, detail),
                 };
                 ui.label(RichText::new(text).font(font_semibold(13.5)).color(color));
                 if let Some(fp) = fp {
-                    ui.label(RichText::new(format!("{} {fp}", tr("Empreinte :", "Fingerprint:"))).font(font(12.0)).color(p.faint));
+                    ui.label(
+                        RichText::new(format!("{} {fp}", tr("Empreinte :", "Fingerprint:", "Отпечаток:"))).font(font(12.0)).color(p.faint),
+                    );
                 }
             });
-            kit::section(ui, p, &tr("Système", "System"));
-            if kit::button(ui, p, Kind::Secondary, Some(Icon::Magnet), &tr("Ouvrir les liens magnet ici", "Open magnet links here"), true)
-                .clicked()
+            kit::section(ui, p, &tr("Système", "System", "Система"));
+            if kit::button(
+                ui,
+                p,
+                Kind::Secondary,
+                Some(Icon::Magnet),
+                &tr("Ouvrir les liens magnet ici", "Open magnet links here", "Открывать magnet-ссылки здесь"),
+                true,
+            )
+            .clicked()
             {
                 let ok = web::register_magnet_handler();
                 self.engine.borrow_mut().toast(
                     if ok {
-                        tr("Demande envoyée au navigateur", "Request sent to the browser")
+                        tr("Demande envoyée au navigateur", "Request sent to the browser", "Запрос отправлен браузеру")
                     } else {
-                        tr("Refusé par ce navigateur", "Refused by this browser")
+                        tr("Refusé par ce navigateur", "Refused by this browser", "Отклонено этим браузером")
                     },
                     ok,
                 );
             }
-            kit::section(ui, p, &tr("À propos", "About"));
+            kit::section(ui, p, &tr("À propos", "About", "О программе"));
             kit::card(ui, p, |ui| {
                 kit::row(ui, p, "Version", env!("CARGO_PKG_VERSION"));
-                kit::row(ui, p, &tr("Identifiant de pair", "Peer id"), &peer_id);
+                kit::row(ui, p, &tr("Identifiant de pair", "Peer id", "ID пира"), &peer_id);
                 ui.horizontal_wrapped(|ui| {
-                    ui.hyperlink_to(tr("Le site", "Website"), "../");
-                    ui.hyperlink_to(tr("Code source", "Source code"), "https://github.com/maxlestage/mxTorrent");
-                    if ui.link(tr("Journal", "Log")).clicked() {
+                    ui.hyperlink_to(tr("Le site", "Website", "Сайт"), "../");
+                    ui.hyperlink_to(tr("Code source", "Source code", "Исходный код"), "https://github.com/maxlestage/mxTorrent");
+                    if ui.link(tr("Journal", "Log", "Журнал")).clicked() {
                         self.log_open = true;
                         done = true;
                     }
                 });
             });
             ui.add_space(8.0);
-            if kit::button(ui, p, Kind::Primary, None, &tr("Enregistrer", "Save"), true).clicked() {
+            if kit::button(ui, p, Kind::Primary, None, &tr("Enregistrer", "Save", "Сохранить"), true).clicked() {
                 if let Some(d) = self.settings_draft.take() {
                     let mut e = self.engine.borrow_mut();
                     e.settings = d;
@@ -919,6 +1051,7 @@ impl MxApp {
             tr(
                 "Déposez des .torrent pour les ouvrir, ou des fichiers pour les partager",
                 "Drop .torrent files to open them, or any files to share them",
+                "Перетащите файлы .torrent, чтобы открыть их, или любые файлы, чтобы поделиться",
             ),
             font_semibold(18.0),
             Color32::WHITE,
@@ -930,7 +1063,7 @@ impl MxApp {
             return;
         }
         let mut open = true;
-        egui::Window::new(tr("Journal", "Log")).open(&mut open).default_size([420.0, 300.0]).show(ctx, |ui| {
+        egui::Window::new(tr("Journal", "Log", "Журнал")).open(&mut open).default_size([420.0, 300.0]).show(ctx, |ui| {
             egui::ScrollArea::vertical().stick_to_bottom(true).show(ui, |ui| {
                 for l in &self.engine.borrow().log {
                     ui.label(RichText::new(l).font(font(12.0)));
@@ -1081,10 +1214,10 @@ fn pick_torrent() {
 
 fn state_label(s: State) -> String {
     match s {
-        State::FetchingMetadata => tr("Métadonnées", "Metadata"),
-        State::Downloading => tr("Téléchargement", "Downloading"),
-        State::Seeding => tr("Partage", "Seeding"),
-        State::Paused => tr("En pause", "Paused"),
+        State::FetchingMetadata => tr("Métadonnées", "Metadata", "Метаданные"),
+        State::Downloading => tr("Téléchargement", "Downloading", "Загрузка"),
+        State::Seeding => tr("Partage", "Seeding", "Раздача"),
+        State::Paused => tr("En pause", "Paused", "На паузе"),
     }
 }
 
@@ -1109,7 +1242,7 @@ fn torrent_card(ui: &mut egui::Ui, p: Palette, entry: &Entry, selected: bool) ->
                 kit::chip(ui, &state_label(state), color);
                 let detail = match t.total_length() {
                     Some(total) => format!("{:.0} % · {}", (t.progress() * 100.0).floor(), bytes(total)),
-                    None => format!("{} {}", t.peer_count(), tr("pairs", "peers")),
+                    None => count(t.peer_count() as u64, "pairs", "peers", ["пир", "пира", "пиров"]),
                 };
                 ui.label(RichText::new(detail).font(font(13.0)).color(p.muted));
                 ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
@@ -1118,7 +1251,11 @@ fn torrent_card(ui: &mut egui::Ui, p: Palette, entry: &Entry, selected: bool) ->
                     } else if state == State::Seeding && t.up_rate() > 1.0 {
                         ui.label(RichText::new(format!("↑ {}", rate_str(t.up_rate()))).font(font_semibold(13.0)).color(PINK));
                     } else if state != State::Paused && t.total_length().is_some() {
-                        ui.label(RichText::new(format!("{} {}", t.peer_count(), tr("pairs", "peers"))).font(font(13.0)).color(p.faint));
+                        ui.label(
+                            RichText::new(count(t.peer_count() as u64, "pairs", "peers", ["пир", "пира", "пиров"]))
+                                .font(font(13.0))
+                                .color(p.faint),
+                        );
                     }
                 });
             });
@@ -1131,44 +1268,53 @@ fn overview_tab(ui: &mut egui::Ui, p: Palette, entry: &Entry) {
     let t = &entry.torrent;
     let (seeds, leech) = entry.swarm_counts();
     kit::card(ui, p, |ui| {
-        kit::row(ui, p, &tr("Réception", "Download"), &rate_str(t.down_rate()));
-        kit::row(ui, p, &tr("Envoi", "Upload"), &rate_str(t.up_rate()));
+        kit::row(ui, p, &tr("Réception", "Download", "Загрузка"), &rate_str(t.down_rate()));
+        kit::row(ui, p, &tr("Envoi", "Upload", "Отдача"), &rate_str(t.up_rate()));
         if t.state() == State::Downloading
             && t.down_rate() > 1.0
             && let Some(left) = t.left()
         {
-            kit::row(ui, p, &tr("Temps restant", "Time left"), &duration(left as f64 / t.down_rate()));
+            kit::row(ui, p, &tr("Temps restant", "Time left", "Осталось"), &duration(left as f64 / t.down_rate()));
         }
         kit::row(
             ui,
             p,
-            &tr("Pairs connectés", "Connected peers"),
-            &format!("{} ({} {})", t.peer_count(), t.seed_count(), tr("complets", "seeds")),
+            &tr("Pairs connectés", "Connected peers", "Подключённые пиры"),
+            &format!("{} ({})", t.peer_count(), count(t.seed_count() as u64, "complets", "seeds", ["сид", "сида", "сидов"])),
         );
         let sw = |x: Option<u32>| x.map(|v| v.to_string()).unwrap_or_else(|| "–".into());
-        kit::row(ui, p, &tr("Essaim (sources / clients)", "Swarm (seeds / leechers)"), &format!("{} / {}", sw(seeds), sw(leech)));
-        kit::row(ui, p, &tr("Reçu", "Downloaded"), &bytes(t.downloaded));
-        kit::row(ui, p, &tr("Envoyé", "Uploaded"), &bytes(t.uploaded));
+        kit::row(
+            ui,
+            p,
+            &tr("Essaim (sources / clients)", "Swarm (seeds / leechers)", "Рой (раздающие / качающие)"),
+            &format!("{} / {}", sw(seeds), sw(leech)),
+        );
+        kit::row(ui, p, &tr("Reçu", "Downloaded", "Принято"), &bytes(t.downloaded));
+        kit::row(ui, p, &tr("Envoyé", "Uploaded", "Отдано"), &bytes(t.uploaded));
         if t.downloaded > 0 {
             kit::row(ui, p, "Ratio", &format!("{:.2}", t.uploaded as f64 / t.downloaded as f64));
         }
     });
     if let Some(m) = t.metainfo() {
         ui.add_space(10.0);
-        kit::section(ui, p, &format!("{} · {} × {}", tr("Pièces", "Pieces"), m.info.piece_count(), bytes(m.info.piece_length as u64)));
+        kit::section(
+            ui,
+            p,
+            &format!("{} · {} × {}", tr("Pièces", "Pieces", "Части"), m.info.piece_count(), bytes(m.info.piece_length as u64)),
+        );
         kit::card(ui, p, |ui| piece_map(ui, p, t));
         ui.add_space(10.0);
         kit::card(ui, p, |ui| {
-            kit::row(ui, p, &tr("Taille", "Size"), &bytes(m.info.total_length));
-            kit::row(ui, p, &tr("Fichiers", "Files"), &m.info.files.len().to_string());
+            kit::row(ui, p, &tr("Taille", "Size", "Размер"), &bytes(m.info.total_length));
+            kit::row(ui, p, &tr("Fichiers", "Files", "Файлы"), &m.info.files.len().to_string());
             if let Some(c) = &m.created_by {
-                kit::row(ui, p, &tr("Créé avec", "Created by"), c);
+                kit::row(ui, p, &tr("Créé avec", "Created by", "Создано в"), c);
             }
             if t.hash_failures > 0 {
-                kit::row(ui, p, &tr("Pièces rejetées", "Rejected pieces"), &t.hash_failures.to_string());
+                kit::row(ui, p, &tr("Pièces rejetées", "Rejected pieces", "Отбракованные части"), &t.hash_failures.to_string());
             }
             ui.add_space(4.0);
-            ui.label(RichText::new(tr("Empreinte", "Info hash")).color(p.muted));
+            ui.label(RichText::new(tr("Empreinte", "Info hash", "Инфо-хеш")).color(p.muted));
             ui.add(egui::Label::new(RichText::new(t.info_hash().to_hex()).font(font(12.5)).color(p.faint)).wrap());
             if let Some(c) = &m.comment {
                 ui.add_space(4.0);
@@ -1187,7 +1333,11 @@ fn files_tab(ui: &mut egui::Ui, p: Palette, entry: &Entry, toggle: &mut Option<(
                 kit::muted(
                     ui,
                     p,
-                    &tr("Les fichiers apparaîtront dès que les métadonnées seront reçues.", "Files will appear once metadata is received."),
+                    &tr(
+                        "Les fichiers apparaîtront dès que les métadonnées seront reçues.",
+                        "Files will appear once metadata is received.",
+                        "Файлы появятся, когда придут метаданные.",
+                    ),
                 );
             });
         });
@@ -1210,13 +1360,13 @@ fn files_tab(ui: &mut egui::Ui, p: Palette, entry: &Entry, toggle: &mut Option<(
             });
             if t.file_complete(fi) {
                 ui.horizontal_wrapped(|ui| {
-                    if kit::button(ui, p, Kind::Secondary, Some(Icon::Download), &tr("Enregistrer", "Save"), false).clicked()
+                    if kit::button(ui, p, Kind::Secondary, Some(Icon::Download), &tr("Enregistrer", "Save", "Сохранить"), false).clicked()
                         && let Some(chunks) = t.file_chunks(fi)
                     {
                         let _ = web::save_file(f.file_name(), &chunks);
                     }
                     if web::can_preview(f.file_name())
-                        && kit::button(ui, p, Kind::Ghost, Some(Icon::Eye), &tr("Ouvrir", "Open"), false).clicked()
+                        && kit::button(ui, p, Kind::Ghost, Some(Icon::Eye), &tr("Ouvrir", "Open", "Открыть"), false).clicked()
                         && let Some(chunks) = t.file_chunks(fi)
                     {
                         let _ = web::open_file(f.file_name(), &chunks);
@@ -1238,9 +1388,7 @@ fn peers_tab(ui: &mut egui::Ui, p: Palette, entry: &Entry, e: &Engine) {
                     ui,
                     p,
                     &tr(
-                        "Aucun pair pour l'instant. Les trackers mettent les navigateurs en relation ; cela peut prendre quelques dizaines de secondes.",
-                        "No peers yet. Trackers introduce browsers to each other; this can take a few dozen seconds.",
-                    ),
+                        "Aucun pair pour l'instant. Les trackers mettent les navigateurs en relation ; cela peut prendre quelques dizaines de secondes.", "No peers yet. Trackers introduce browsers to each other; this can take a few dozen seconds.", "Пока нет пиров. Трекеры знакомят браузеры друг с другом; это может занять несколько десятков секунд."),
                 );
             });
         });
@@ -1285,7 +1433,7 @@ fn trackers_tab(ui: &mut egui::Ui, p: Palette, entry: &Entry, e: &Engine) {
             });
             let s = st.seeders.map(|x| x.to_string()).unwrap_or("–".into());
             let l = st.leechers.map(|x| x.to_string()).unwrap_or("–".into());
-            kit::muted(ui, p, &format!("{} {s} · {} {l}", tr("sources", "seeds"), tr("clients", "leechers")));
+            kit::muted(ui, p, &format!("{} {s} · {} {l}", tr("sources", "seeds", "раздающих"), tr("clients", "leechers", "качающих")));
             if let Some(m) = &st.message {
                 ui.label(RichText::new(m).font(font(12.5)).color(AMBER));
             }
@@ -1294,10 +1442,10 @@ fn trackers_tab(ui: &mut egui::Ui, p: Palette, entry: &Entry, e: &Engine) {
     let ws = entry.web_seed_status();
     if !ws.is_empty() {
         ui.add_space(10.0);
-        kit::section(ui, p, &tr("Sources web", "Web seeds"));
+        kit::section(ui, p, &tr("Sources web", "Web seeds", "Веб-сиды"));
         kit::card(ui, p, |ui| {
             for (u, pieces, _) in ws {
-                kit::row(ui, p, &u, &format!("{pieces} {}", tr("pièces", "pieces")));
+                kit::row(ui, p, &u, &count(pieces, "pièces", "pieces", ["часть", "части", "частей"]));
             }
         });
     }

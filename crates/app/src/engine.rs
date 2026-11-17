@@ -228,22 +228,27 @@ impl Engine {
         let input = input.trim();
         if input.starts_with("http://") || input.starts_with("https://") {
             let url = input.to_string();
-            self.toast(crate::i18n::tr("Téléchargement du .torrent…", "Downloading the .torrent…"), true);
+            self.toast(crate::i18n::tr("Téléchargement du .torrent…", "Downloading the .torrent…", "Загрузка .torrent…"), true);
             wasm_bindgen_futures::spawn_local(async move {
                 let r = web::fetch_bytes(&url, None).await.map(|(_, b)| b);
                 net::push(NetEvent::Fetched(url, r));
             });
             return Ok(());
         }
-        let m =
-            Magnet::parse(input).ok_or_else(|| crate::i18n::tr("Lien magnet ou empreinte invalide", "Invalid magnet link or info hash"))?;
+        let m = Magnet::parse(input).ok_or_else(|| {
+            crate::i18n::tr("Lien magnet ou empreinte invalide", "Invalid magnet link or info hash", "Неверная magnet-ссылка или хеш")
+        })?;
         if let Some(i) = self.find(&m.info_hash) {
             for t in m.trackers {
                 if !self.entries[i].torrent.trackers.contains(&t) {
                     self.entries[i].torrent.trackers.push(t);
                 }
             }
-            return Err(crate::i18n::tr("Ce torrent est déjà dans la liste", "This torrent is already in the list"));
+            return Err(crate::i18n::tr(
+                "Ce torrent est déjà dans la liste",
+                "This torrent is already in the list",
+                "Этот торрент уже в списке",
+            ));
         }
         let t = Torrent::from_magnet(&m, self.peer_id, self.rng.next_u64(), web::now_ms());
         self.insert(t, false);
@@ -253,7 +258,11 @@ impl Engine {
     pub fn add_torrent_bytes(&mut self, bytes: &[u8]) -> Result<(), String> {
         let meta = Metainfo::from_torrent(bytes).map_err(|e| e.to_string())?;
         if self.find(&meta.info_hash).is_some() {
-            return Err(crate::i18n::tr("Ce torrent est déjà dans la liste", "This torrent is already in the list"));
+            return Err(crate::i18n::tr(
+                "Ce torrent est déjà dans la liste",
+                "This torrent is already in the list",
+                "Этот торрент уже в списке",
+            ));
         }
         let t = Torrent::from_metainfo(meta, self.peer_id, self.rng.next_u64(), web::now_ms());
         self.insert(t, false);
@@ -263,7 +272,7 @@ impl Engine {
     /// Crée un torrent à partir de fichiers locaux et le partage aussitôt.
     pub fn share_files(&mut self, files: Vec<(String, Vec<u8>)>) -> Result<InfoHash, String> {
         if files.is_empty() {
-            return Err(crate::i18n::tr("Aucun fichier", "No file"));
+            return Err(crate::i18n::tr("Aucun fichier", "No file", "Нет файла"));
         }
         let new: Vec<NewFile> = files
             .iter()
@@ -331,7 +340,7 @@ impl Engine {
             .collect();
         self.entries.push(Entry { torrent, trackers, completed_at: if created_here { Some(now) } else { None }, created_here, web_seeds });
         self.dirty = true;
-        self.toast(format!("{} {name}", crate::i18n::tr("Ajouté :", "Added:")), true);
+        self.toast(format!("{} {name}", crate::i18n::tr("Ajouté :", "Added:", "Добавлен:")), true);
         self.ensure_trackers();
     }
 
@@ -367,7 +376,7 @@ impl Engine {
         let pending = &self.pending;
         self.offer_index.retain(|_, k| pending.contains_key(k));
         self.dirty = true;
-        self.toast(format!("{} {}", crate::i18n::tr("Retiré :", "Removed:"), e.torrent.name()), true);
+        self.toast(format!("{} {}", crate::i18n::tr("Retiré :", "Removed:", "Удалён:"), e.torrent.name()), true);
     }
 
     pub fn set_paused(&mut self, h: &InfoHash, paused: bool) {
@@ -449,7 +458,7 @@ impl Engine {
                     t.open = true;
                     t.backoff = 5_000;
                 }
-                self.logline(format!("tracker {url} : {}", crate::i18n::tr("connecté", "connected")));
+                self.logline(format!("tracker {url} : {}", crate::i18n::tr("connecté", "connected", "подключён")));
                 for e in &mut self.entries {
                     if let Some(st) = e.trackers.get_mut(&url) {
                         st.next_announce = 0;
@@ -469,7 +478,11 @@ impl Engine {
                     t.backoff = (t.backoff * 2).min(300_000);
                     for e in &mut self.entries {
                         if let Some(st) = e.trackers.get_mut(&url) {
-                            st.message = Some(crate::i18n::tr("injoignable, nouvel essai bientôt", "unreachable, retrying soon"));
+                            st.message = Some(crate::i18n::tr(
+                                "injoignable, nouvel essai bientôt",
+                                "unreachable, retrying soon",
+                                "недоступен, будет повторная попытка",
+                            ));
                             st.announced_started = false;
                         }
                     }
@@ -641,7 +654,7 @@ impl Engine {
                     Event::Completed => {
                         if e.completed_at.is_none() {
                             e.completed_at = Some(now);
-                            toasts.push(format!("{} {}", crate::i18n::tr("Terminé :", "Done:"), e.torrent.name()));
+                            toasts.push(format!("{} {}", crate::i18n::tr("Terminé :", "Done:", "Готов:"), e.torrent.name()));
                             for st in e.trackers.values_mut() {
                                 st.next_announce = 0; // annonce « completed »
                             }
