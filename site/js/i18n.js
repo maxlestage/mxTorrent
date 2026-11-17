@@ -27,7 +27,7 @@ export const EN = {
   "stats.install": "bytes to install",
   "stats.rust": "of the engine in Rust",
   "stats.block": "per block, verified",
-  "stats.langs": "languages: FR and EN",
+  "stats.langs": "languages: FR, EN and RU",
 
   "feat.kicker": "Features",
   "feat.title": "Everything you expect from a torrent client. In a tab.",
@@ -68,7 +68,7 @@ export const EN = {
   "pp2.t": "Live peers",
   "pp2.d": "Client, progress, rates and state of every peer.",
   "pp3.t": "Light or dark theme",
-  "pp3.d": "And an interface in French or English.",
+  "pp3.d": "And an interface in French, English or Russian.",
 
   "sec.kicker": "Security and privacy",
   "sec.title": "The browser as a sandbox.",

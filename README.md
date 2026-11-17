@@ -29,7 +29,7 @@ Rien à installer : il tourne dans un onglet, sur ordinateur comme sur télépho
 | 🌍 **Tout le réseau BitTorrent** | Les navigateurs en direct (WebRTC, compatible WebTorrent) et, par la [passerelle](#la-passerelle-tcpudp-chiffrée-par-brocolis-), les trackers UDP et HTTP, la DHT et les pairs TCP (qBittorrent, Transmission, µTorrent…). |
 | 🥦 **Chiffré par Brocolis** | Entre le navigateur et la passerelle : session [Brocolis](https://github.com/maxlestage/brocolis) v4, X25519 + ML-KEM-768 (résistant aux ordinateurs quantiques). Vers les pairs : DTLS (WebRTC) ou MSE (TCP). |
 | 📲 **PWA** | Installable, fonctionne hors ligne, ouvre les liens `magnet:` et les fichiers `.torrent`, reçoit les fichiers partagés depuis Android. |
-| 🇫🇷 🇬🇧 | Interface en français et en anglais, thème sombre ou clair, mise en page ordinateur et téléphone. |
+| 🇫🇷 🇬🇧 🇷🇺 | Interface en français, en anglais et en russe, thème sombre ou clair, mise en page ordinateur et téléphone. |
 
 ## Architecture
 

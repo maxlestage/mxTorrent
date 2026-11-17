@@ -195,8 +195,26 @@ pub struct PeerConn {
 
 const HIGH_WATER: u32 = 1024 * 1024;
 const LOW_WATER: u32 = 256 * 1024;
-/// Taille des morceaux envoyés : compatible avec tous les navigateurs et WebTorrent.
+/// Morceau minimum, accepté par tous les navigateurs et WebTorrent.
 const CHUNK: usize = 16 * 1024;
+/// Morceau maximum : au-delà, le gain devient négligeable et la latence grimpe.
+const CHUNK_MAX: usize = 256 * 1024;
+
+/// Ce que le SCTP de ce canal accepte par message (web-sys ne l'expose pas :
+/// réflexion JavaScript). De gros messages réduisent le travail par octet
+/// (3 à 4 fois plus rapide mesuré) ; le protocole BitTorrent, lui, est un flux
+/// d'octets et s'en moque. À l'appeler quand le canal est ouvert : avant,
+/// `pc.sctp` n'existe pas encore.
+fn chunk_size(pc: &RtcPeerConnection) -> usize {
+    let m = Reflect::get(pc.as_ref(), &JsValue::from_str("sctp"))
+        .ok()
+        .and_then(|s| Reflect::get(&s, &JsValue::from_str("maxMessageSize")).ok())
+        .and_then(|v| v.as_f64());
+    match m {
+        Some(m) if m.is_finite() && m as usize >= CHUNK => (m as usize).min(CHUNK_MAX),
+        _ => CHUNK,
+    }
+}
 
 fn rtc_config(stun: &[String]) -> RtcConfiguration {
     let cfg = RtcConfiguration::new();
@@ -350,7 +368,8 @@ impl PeerConn {
 
     pub fn send(&self, data: &[u8]) -> bool {
         let Some(dc) = &self.dc else { return false };
-        for c in data.chunks(CHUNK) {
+        let chunk = chunk_size(&self.pc);
+        for c in data.chunks(chunk) {
             if dc.send_with_u8_array(c).is_err() {
                 return false;
             }
